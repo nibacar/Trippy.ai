@@ -5,10 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Trippy — Planner</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* --- Minimal scoped styles for the inline planner & results --- */
+
+    .hero { text-align: center; }
+    .h1   { font-size: 36px; font-weight: 800; margin: 40px 0; }
+
+    .planner-inline{
+      display:flex; align-items:center; justify-content:center; gap:12px;
+      background:#f2f2f2; padding:18px; border-radius:36px;
+      box-shadow:inset 0 1px 3px rgba(0,0,0,.08);
+      max-width:1100px; margin:0 auto;
+    }
+    .input{
+      flex:1; height:46px; display:flex; align-items:center;
+      background:#fff; border:1px solid #d5d8de; border-radius:999px; padding:0 14px;
+    }
+    .input.small{ flex:0 0 140px; }
+    .input input{ width:100%; border:0; outline:0; background:transparent; font-size:14px; }
+
+    .btn{ height:46px; border-radius:999px; font-weight:700; cursor:pointer }
+    .btn.primary{ background:#111827; color:#fff; padding:0 22px }
+    .btn.primary:hover{ filter:brightness(1.05) }
+    .btn.ghost{ background:#fff; border:1px solid #d5d8de; padding:0 16px }
+
+    /* Filters dropdown */
+    .filter-wrap{ position:relative }
+    .filter-menu{
+      display:none; position:absolute; top:52px; right:0; z-index:30;
+      width:240px; padding:10px; background:#fff; border:1px solid #e5e7eb;
+      border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12); text-align:left;
+    }
+    .filter-menu.open{ display:block }
+    .menu-head{ font-weight:700; font-size:14px; margin:4px 0 8px }
+    .menu-row{ display:flex; align-items:center; gap:8px; padding:6px 4px; border-radius:6px; cursor:pointer; user-select:none }
+    .menu-row:hover{ background:#f6f7f9 }
+    .menu-sep{ height:1px; background:#eee; margin:8px 0 }
+
+    /* Results dropdown (collapsible) */
+    .results{
+      max-width:1100px; margin:16px auto 0;
+      border:1px solid #e6e8ee; background:#fff; border-radius:20px;
+      box-shadow:0 8px 24px rgba(0,0,0,.06);
+      overflow:hidden; transition:grid-template-rows .35s ease, padding .35s ease;
+      display:grid; grid-template-rows:0fr; padding:0 20px;
+    }
+    .results.open{ grid-template-rows:1fr; padding:16px 20px 20px; }
+    .results-inner{ min-height:0; overflow:hidden; }
+
+    .results-head{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      margin-bottom:12px;
+    }
+    .chips{ display:flex; flex-wrap:wrap; gap:8px }
+    .chip{
+      padding:6px 10px; font-size:12px; color:#111; background:#f4f6f9;
+      border:1px solid #e6eaf2; border-radius:999px;
+    }
+    .muted{ color:#6b7280; font-size:13px }
+
+    .map-card{
+      border:1px solid #e6e8ee; border-radius:16px; overflow:hidden;
+      height:340px; background:#f7f7fb; display:grid; place-items:center;
+    }
+    .map-card img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .map-fallback{ color:#6b7280; font-size:14px; padding:8px; }
+  </style>
 </head>
 <body>
+  <!-- auth gate -->
   <script>
-    // Guard: if not signed in, force login
     if (!localStorage.getItem('signedIn')) {
       window.location.replace('login.html');
     }
@@ -16,7 +82,9 @@
 
   <header class="header">
     <div class="container header-inner">
-      <a href="index.html"  style="text-decoration: none; color: inherit; cursor: default;"><div class="brand"><span class="dot"></span> Trippy</div></a>
+      <a href="index.html" style="text-decoration:none; color:inherit; cursor:default;">
+        <div class="brand"><span class="dot"></span> Trippy</div>
+      </a>
       <nav class="nav">
         <a href="index.html">Home</a>
         <a href="planner.html">Trips</a>
@@ -26,135 +94,135 @@
   </header>
 
   <section class="hero">
-  <div class="container">
-    <h1 class="h1" id="welcomeText">
-</h1>
+    <div class="container">
+      <h1 class="h1" id="welcomeText">Hello, Let’s Plan Your Next Road Trip</h1>
 
-    <!-- Planner search bar -->
-    <div class="planner-bar">
-      <label class="input"><input placeholder="Starting Location" /></label>
-      <label class="input"><input placeholder="Destination" /></label>
-      <button class="btn primary">Go</button>
+      <!-- One-line planner bar -->
+      <div class="planner-inline">
+        <label class="input">
+          <input id="startInput" placeholder="Starting Location" autocomplete="off" />
+        </label>
 
-      <div class="planner-row" style="grid-column: 1 / -1;">
-        <label class="input"><input value="50" /><span class="ghost">Gas (USD)</span></label>
-        <label class="input"><input value="2" /><span class="ghost"># of Breaks</span></label>
-        <label class="input"><input placeholder="Extras" /></label>
-        <button class="btn ghost" id="openFilters">Filters</button>
+        <label class="input">
+          <input id="destInput" placeholder="Destination" autocomplete="off" />
+        </label>
+
+        <label class="input small">
+          <input id="gasInput" type="number" min="0" step="1" placeholder="Gas" />
+        </label>
+
+        <label class="input small">
+          <input id="breaksInput" type="number" min="0" step="1" placeholder="# Breaks" />
+        </label>
+
+        <div class="filter-wrap">
+          <button class="btn ghost" id="filterBtn" aria-haspopup="true" aria-expanded="false">Filters</button>
+          <div class="filter-menu" id="filterMenu" role="menu" aria-label="Filters">
+            <div class="menu-head">Stop types</div>
+            <label class="menu-row"><input type="checkbox" class="f-type" value="Gas" checked /> Gas</label>
+            <label class="menu-row"><input type="checkbox" class="f-type" value="Food" checked /> Food</label>
+            <label class="menu-row"><input type="checkbox" class="f-type" value="Attractions" /> Attractions</label>
+            <label class="menu-row"><input type="checkbox" class="f-type" value="Rest Area" /> Rest Area</label>
+            <div class="menu-sep"></div>
+            <div class="menu-head">Max off-route distance</div>
+            <label class="menu-row"><input type="radio" name="dist" value="≤ 3 km" checked /> ≤ 3 km</label>
+            <label class="menu-row"><input type="radio" name="dist" value="≤ 5 km" /> ≤ 5 km</label>
+            <label class="menu-row"><input type="radio" name="dist" value="≤ 10 km" /> ≤ 10 km</label>
+          </div>
+        </div>
+
+        <button class="btn primary" id="goBtn">Go</button>
       </div>
-    </div>
 
-    <!-- Main 2-column layout -->
-    <div class="planner-grid" style="margin-top:18px">
-
-      <!-- Left: suggested stops -->
-      <section>
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px">
-          <div class="section-title">Suggested Stops</div>
-          <div class="badge">≤ 3 km off route</div>
-        </div>
-
-        <div class="stop">
-          <input class="checkbox" type="checkbox" />
-          <div>
-            <div class="title">Shell – Exit 24</div>
-            <div class="meta"><span>⭐ 4.2</span><span>1.1 km off route</span><span>~12 min</span></div>
+      <!-- Collapsible results with map placeholder -->
+      <div id="results" class="results" aria-hidden="true">
+        <div class="results-inner">
+          <div class="results-head">
+            <div class="chips" id="summaryChips"></div>
+            <span class="muted" id="statusText">Map preview (placeholder)</span>
           </div>
-          <span class="badge">Gas</span>
-        </div>
 
-        <div class="stop" style="margin-top:10px">
-          <input class="checkbox" type="checkbox" />
-          <div>
-            <div class="title">Bluebird Café</div>
-            <div class="meta"><span>⭐ 4.6</span><span>2.4 km off route</span><span>~45 min</span></div>
+          <div class="map-card">
+            <img src="./assets/roadtrip.jpeg" alt="Map preview"
+                 onerror="this.remove(); document.getElementById('mapFallback').style.display='block'">
+            <div id="mapFallback" class="map-fallback" style="display:none">
+              Map placeholder — wire in your real map here later.
+            </div>
           </div>
-          <span class="badge">Food</span>
         </div>
-
-        <div class="stop" style="margin-top:10px">
-          <input class="checkbox" type="checkbox" />
-          <div>
-            <div class="title">Vista Point Overlook</div>
-            <div class="meta"><span>⭐ 4.8</span><span>3.6 km off route</span><span>~25 min</span></div>
-          </div>
-          <span class="badge">Attraction</span>
-        </div>
-      </section>
-
-      <!-- Right: itinerary -->
-      <aside class="sidebar">
-        <div class="section-title" style="margin-top:0">Your Itinerary</div>
-        <div class="hint">Select stops to build your plan.</div>
-
-        <div class="itin" style="margin-top:12px">
-          <div style="display:flex; justify-content:space-between"><span>Total extra distance</span><strong>0.0 km</strong></div>
-          <div style="display:flex; justify-content:space-between"><span>Total stop time</span><strong>0 min</strong></div>
-        </div>
-
-        <button class="btn primary" style="margin-top:14px; width:100%">Save Trip</button>
-      </aside>
-    </div>
-  </div>
-</section>
-
-
-
-
-  <!-- Filters Drawer -->
-  <div class="drawer-backdrop" id="backdrop" style="display:none"></div>
-  <aside class="drawer" id="drawer" aria-hidden="true">
-    <div class="drawer-head">
-      <strong>Filters</strong>
-      <button class="btn secondary" id="closeFilters">Close</button>
-    </div>
-    <div class="section">
-      <div style="font-size:14px; color:var(--muted); margin-bottom:8px">Stop Types</div>
-      <div class="chips">
-        <button class="chip active">Gas</button>
-        <button class="chip active">Food</button>
-        <button class="chip active">Attractions</button>
-        <button class="chip">Rest Area</button>
-        <button class="chip">Lodging</button>
       </div>
+
     </div>
-    <div class="section">
-      <div style="display:flex; justify-content:space-between; font-size:14px">
-        <span>Max distance off route</span><span>3 km</span></div>
-      <input class="range" type="range" min="0" max="10" step="0.5" value="3" />
-      <div class="rule"></div>
-      <div style="display:flex; justify-content:space-between; font-size:14px">
-        <span>Minimum rating</span><span>4.0</span></div>
-      <input class="range" type="range" min="3" max="5" step="0.1" value="4.0" />
-      <button class="btn" style="width:100%; margin-top:16px" id="apply">Apply Filters</button>
-    </div>
-  </aside>
+  </section>
 
   <footer class="footer">
-    <div class="container">© <span id="y"></span> Trippy — Static UI Prototype</div>
+    <div class="container">© <span id="y"></span> Trippy</div>
   </footer>
 
   <script>
+    // footer year + welcome text
     document.getElementById('y').textContent = new Date().getFullYear();
-    const drawer = document.getElementById('drawer');
-    const backdrop = document.getElementById('backdrop');
-    const openBtn = document.getElementById('openFilters');
-    const closeBtn = document.getElementById('closeFilters');
-    function openDrawer(){ drawer.classList.add('open'); backdrop.style.display='block'; }
-    function closeDrawer(){ drawer.classList.remove('open'); backdrop.style.display='none'; }
-    if (openBtn) openBtn.addEventListener('click', openDrawer);
-    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-    if (backdrop) backdrop.addEventListener('click', closeDrawer);
-  </script>
-  <script>
     const firstName = localStorage.getItem("firstName");
-  
     const welcomeText = document.getElementById("welcomeText");
-    if (firstName) {
-      welcomeText.textContent = `Hello ${firstName}, Let’s Plan Your Next Road Trip`;
-    } else {
-      welcomeText.textContent = "Hello, Let’s Plan Your Next Road Trip";
+    welcomeText.textContent = firstName
+      ? `Hello ${firstName}, Let’s Plan Your Next Road Trip`
+      : "Hello, Let’s Plan Your Next Road Trip";
+
+    // Filters dropdown behavior
+    const filterBtn  = document.getElementById('filterBtn');
+    const filterMenu = document.getElementById('filterMenu');
+    function toggleMenu(open) {
+      const willOpen = open ?? !filterMenu.classList.contains('open');
+      filterMenu.classList.toggle('open', willOpen);
+      filterBtn.setAttribute('aria-expanded', String(willOpen));
     }
+    filterBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
+    document.addEventListener('click', (e) => {
+      if (!filterMenu.contains(e.target) && e.target !== filterBtn) toggleMenu(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleMenu(false); });
+
+    // Results show/hide + chips
+    const resultsEl = document.getElementById('results');
+    const statusText = document.getElementById('statusText');
+    function openResults(){ resultsEl.classList.add('open'); resultsEl.setAttribute('aria-hidden','false'); }
+    function closeResults(){ resultsEl.classList.remove('open'); resultsEl.setAttribute('aria-hidden','true'); }
+
+    function renderChips({ start, dest, gas, breaks, types, dist }) {
+      const wrap = document.getElementById('summaryChips');
+      wrap.innerHTML = '';
+      const mk = (t) => { const s = document.createElement('span'); s.className='chip'; s.textContent=t; return s; };
+      wrap.append(
+        mk(`From: ${start}`),
+        mk(`To: ${dest}`),
+        mk(`Gas: ${gas}`),
+        mk(`Breaks: ${breaks}`),
+        mk(`Types: ${types.length ? types.join(', ') : 'None'}`),
+        mk(`Off-route: ${dist}`)
+      );
+    }
+
+    // Validate inputs and open results
+    document.getElementById('goBtn').addEventListener('click', () => {
+      const start  = document.getElementById('startInput').value.trim();
+      const dest   = document.getElementById('destInput').value.trim();
+      const gas    = document.getElementById('gasInput').value.trim();
+      const breaks = document.getElementById('breaksInput').value.trim();
+
+      if (!start || !dest || gas === '' || breaks === '') {
+        alert('Please fill Starting Location, Destination, Gas, and # of Breaks.');
+        closeResults();
+        return;
+      }
+
+      const types = [...document.querySelectorAll('.f-type:checked')].map(i => i.value);
+      const dist  = (document.querySelector('input[name="dist"]:checked')?.value) || '≤ 3 km';
+
+      renderChips({ start, dest, gas, breaks, types, dist });
+      statusText.textContent = 'Map preview (placeholder)';
+      openResults();
+      toggleMenu(false);
+    });
   </script>
 </body>
 </html>

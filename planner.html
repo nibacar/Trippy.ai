@@ -16,7 +16,7 @@
 
   <header class="header">
     <div class="container header-inner">
-      <div class="brand"><span class="dot"></span> Trippy</div>
+      <a href="index.html"  style="text-decoration: none; color: inherit; cursor: default;"><div class="brand"><span class="dot"></span> Trippy</div></a>
       <nav class="nav">
         <a href="index.html">Home</a>
         <a href="planner.html">Trips</a>
@@ -27,7 +27,8 @@
 
   <section class="hero">
   <div class="container">
-    <h1 class="h1">Hello ***, Let’s Plan Your Next Road Trip</h1>
+    <h1 class="h1" id="welcomeText">
+</h1>
 
     <!-- Planner search bar -->
     <div class="planner-bar">
@@ -144,6 +145,16 @@
     if (openBtn) openBtn.addEventListener('click', openDrawer);
     if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
     if (backdrop) backdrop.addEventListener('click', closeDrawer);
+  </script>
+  <script>
+    const firstName = localStorage.getItem("firstName");
+  
+    const welcomeText = document.getElementById("welcomeText");
+    if (firstName) {
+      welcomeText.textContent = `Hello ${firstName}, Let’s Plan Your Next Road Trip`;
+    } else {
+      welcomeText.textContent = "Hello, Let’s Plan Your Next Road Trip";
+    }
   </script>
 </body>
 </html>

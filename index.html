@@ -10,7 +10,7 @@
   <!-- Header -->
   <header class="header">
     <div class="container header-inner">
-      <div class="brand"><span class="dot"></span> Trippy</div>
+      <a href="index.html"  style="text-decoration: none; color: inherit; cursor: default;"><div class="brand"><span class="dot"></span> Trippy</div></a>
       <nav class="nav">
         <a href="index.html">Home</a>
         <!-- PROTECTED: no href while logged out -->
@@ -33,21 +33,20 @@
               Plan Road Trips Stress Free.
             </div>
 
-            <form class="form" onsubmit="return false">
-              <label class="input"><input placeholder="First Name" /></label>
-              <label class="input"><input placeholder="Last Name" /></label>
-              <label class="input"><input placeholder="Email Address" type="email" /></label>
-              <label class="input"><input placeholder="Password" type="password" /></label>
+            <form class="form" id="signupForm">
+              <label class="input"><input placeholder="First Name" id="firstName" /></label>
+              <label class="input"><input placeholder="Last Name" id="lastName" /></label>
+              <label class="input"><input placeholder="Email Address" id="email" type="email" /></label>
+              <label class="input"><input placeholder="Password" id="password" type="password" /></label>
 
-              <!-- Create account -> mark signed in, go to planner -->
+              <!-- Create account -> now sends to Python backend -->
               <button
-                type="button"
+                type="submit"
                 class="btn"
-                style="width:100%; margin-top:6px"
-                onclick="localStorage.setItem('signedIn','1'); window.location.href='planner.html';">
+                style="width:100%; margin-top:6px">
                 Create Account
               </button>
-
+              <p id="errorMessage" style="color: red; font-size: 14px; margin-top: 6px;"></p>
               <div class="small" style="margin-top:8px">
                 Already have an account?
                 <a class="link" href="login.html">Log in</a>
@@ -73,28 +72,41 @@
 
   <!-- Auth guard script -->
   <script>
-    document.getElementById('y').textContent = new Date().getFullYear();
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+      e.preventDefault();  // Stop page refresh
+  
+      const userData = {
+        first_name: document.getElementById("firstName").value,
+        last_name: document.getElementById("lastName").value,
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value
+      };
+  
+      try {
+        const response = await fetch("http://127.0.0.1:5000/register", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(userData)
+});
 
-    function applyAuthGuards() {
-      const signedIn = !!localStorage.getItem('signedIn');
-      document.querySelectorAll('[data-protected]').forEach(a => {
-        if (!signedIn) {
-          // Logged out: remove href so navigation is impossible
-          a.removeAttribute('href');
-          a.setAttribute('aria-disabled', 'true');
-          a.onclick = (e) => { e.preventDefault(); document.getElementById('signup')?.scrollIntoView({behavior:'smooth'}); return false; };
-        } else {
-          // Logged in: restore href
-          a.setAttribute('href', a.dataset.target || 'planner.html');
-          a.removeAttribute('aria-disabled');
-          a.onclick = null;
-        }
-      });
-    }
+const result = await response.json();
 
-    // Run on load + when other tabs change sign-in
-    applyAuthGuards();
-    window.addEventListener('storage', (e) => { if (e.key === 'signedIn') applyAuthGuards(); });
+const errorMessage = document.getElementById("errorMessage"); // ✅ Reference to red text area
+
+if (result.success) {
+  localStorage.setItem("signedIn", "1");
+  localStorage.setItem("firstName", userData.first_name);
+  window.location.href = "planner.html";
+} else {
+  // Show red error text instead of alert
+  errorMessage.textContent = result.error || "Error creating account.";
+}
+
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Could not connect to server.");
+      }
+    });
   </script>
 </body>
 </html>

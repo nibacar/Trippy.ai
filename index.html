@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trippy — Home</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container header-inner">
+      <div class="brand"><span class="dot"></span> Trippy</div>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <!-- PROTECTED: no href while logged out -->
+        <a data-protected data-target="planner.html">Trips</a>
+        <a data-protected data-target="planner.html">Profile</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="h1">Your Road Trip, Your Way!</h1>
+
+      <div class="card pad" style="margin-top:24px">
+        <div class="split">
+          <!-- Left column: form -->
+          <div id="signup">
+            <div class="subtitle" style="font-size:22px; font-weight:800;">
+              Plan Road Trips Stress Free.
+            </div>
+
+            <form class="form" onsubmit="return false">
+              <label class="input"><input placeholder="First Name" /></label>
+              <label class="input"><input placeholder="Last Name" /></label>
+              <label class="input"><input placeholder="Email Address" type="email" /></label>
+              <label class="input"><input placeholder="Password" type="password" /></label>
+
+              <!-- Create account -> mark signed in, go to planner -->
+              <button
+                type="button"
+                class="btn"
+                style="width:100%; margin-top:6px"
+                onclick="localStorage.setItem('signedIn','1'); window.location.href='planner.html';">
+                Create Account
+              </button>
+
+              <div class="small" style="margin-top:8px">
+                Already have an account?
+                <a class="link" href="login.html">Log in</a>
+              </div>
+            </form>
+          </div>
+
+          <!-- Right column: image box -->
+          <div class="card" style="height:360px; border-radius:16px; overflow:hidden">
+            <img src="./assets/roadtrip.jpeg"
+                 alt="Road trip illustration"
+                 style="width:100%; height:100%; object-fit:cover; display:block;">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">© <span id="y"></span> Trippy — Static UI Prototype</div>
+  </footer>
+
+  <!-- Auth guard script -->
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    function applyAuthGuards() {
+      const signedIn = !!localStorage.getItem('signedIn');
+      document.querySelectorAll('[data-protected]').forEach(a => {
+        if (!signedIn) {
+          // Logged out: remove href so navigation is impossible
+          a.removeAttribute('href');
+          a.setAttribute('aria-disabled', 'true');
+          a.onclick = (e) => { e.preventDefault(); document.getElementById('signup')?.scrollIntoView({behavior:'smooth'}); return false; };
+        } else {
+          // Logged in: restore href
+          a.setAttribute('href', a.dataset.target || 'planner.html');
+          a.removeAttribute('aria-disabled');
+          a.onclick = null;
+        }
+      });
+    }
+
+    // Run on load + when other tabs change sign-in
+    applyAuthGuards();
+    window.addEventListener('storage', (e) => { if (e.key === 'signedIn') applyAuthGuards(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trippy — Log In</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <div class="brand"><span class="dot"></span> Trippy</div>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <!-- PROTECTED: no href while logged out -->
+        <a data-protected data-target="planner.html">Trips</a>
+        <a data-protected data-target="planner.html">Profile</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <h1 class="h1">Welcome Back</h1>
+
+      <div class="card pad" style="margin-top:24px; max-width:680px; margin-left:auto; margin-right:auto;">
+        <div class="subtitle" style="font-size:22px; font-weight:800;">Log in to continue</div>
+
+        <form class="form" onsubmit="return false">
+          <label class="input"><input placeholder="Email Address" type="email" /></label>
+          <label class="input"><input placeholder="Password" type="password" /></label>
+
+          <button
+            type="button"
+            class="btn"
+            style="width:100%; margin-top:6px"
+            onclick="localStorage.setItem('signedIn','1'); window.location.href='planner.html';">
+            Log In
+          </button>
+
+          <div class="small" style="margin-top:8px">
+            New here? <a class="link" href="index.html#signup">Create an account</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">© <span id="y"></span> Trippy</div>
+  </footer>
+
+  <script>
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    function applyAuthGuards() {
+      const signedIn = !!localStorage.getItem('signedIn');
+      document.querySelectorAll('[data-protected]').forEach(a => {
+        if (!signedIn) {
+          a.removeAttribute('href');
+          a.setAttribute('aria-disabled', 'true');
+          a.onclick = (e) => { e.preventDefault(); return false; };
+        } else {
+          a.setAttribute('href', a.dataset.target || 'planner.html');
+          a.removeAttribute('aria-disabled');
+          a.onclick = null;
+        }
+      });
+    }
+
+    applyAuthGuards();
+    window.addEventListener('storage', (e) => { if (e.key === 'signedIn') applyAuthGuards(); });
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import googlemaps
 
-api_key = 'AIzaSyBezo_DR2t44RmfP--NIZ3v9iclRclfoHQ'
+api_key = 'AIzaSyCr1WhJtX6cLLu6UCMUVGiKm4mnmuGD6E8'
 gmaps = googlemaps.Client(key=api_key)
 
 def geocode_address(address):

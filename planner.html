@@ -6,8 +6,9 @@
   <title>Trippy — Planner</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    /* --- Minimal scoped styles for the inline planner & results --- */
+    :root { color-scheme: light; }
 
+    /* ---------- Layout / existing styles ---------- */
     .hero { text-align: center; }
     .h1   { font-size: 36px; font-weight: 800; margin: 40px 0; }
 
@@ -17,7 +18,9 @@
       box-shadow:inset 0 1px 3px rgba(0,0,0,.08);
       max-width:1100px; margin:0 auto;
     }
+
     .input{
+      position:relative; /* kept for legacy elements if any */
       flex:1; height:46px; display:flex; align-items:center;
       background:#fff; border:1px solid #d5d8de; border-radius:999px; padding:0 14px;
     }
@@ -29,7 +32,6 @@
     .btn.primary:hover{ filter:brightness(1.05) }
     .btn.ghost{ background:#fff; border:1px solid #d5d8de; padding:0 16px }
 
-    /* Filters dropdown */
     .filter-wrap{ position:relative }
     .filter-menu{
       display:none; position:absolute; top:52px; right:0; z-index:30;
@@ -42,7 +44,6 @@
     .menu-row:hover{ background:#f6f7f9 }
     .menu-sep{ height:1px; background:#eee; margin:8px 0 }
 
-    /* Results dropdown (collapsible) */
     .results{
       max-width:1100px; margin:16px auto 0;
       border:1px solid #e6e8ee; background:#fff; border-radius:20px;
@@ -64,16 +65,130 @@
     }
     .muted{ color:#6b7280; font-size:13px }
 
-    .map-card{
-      border:1px solid #e6e8ee; border-radius:16px; overflow:hidden;
-      height:340px; background:#f7f7fb; display:grid; place-items:center;
+    .map-grid{ display:grid; grid-template-columns: 2fr 1fr; gap:12px; }
+    #map{
+      width:100%; height:420px; border:1px solid #e6e8ee;
+      border-radius:16px; overflow:hidden;
     }
-    .map-card img{ width:100%; height:100%; object-fit:cover; display:block; }
-    .map-fallback{ color:#6b7280; font-size:14px; padding:8px; }
+    #steps{
+      height:420px; border:1px solid #e6e8ee; border-radius:16px;
+      padding:12px; text-align:left; overflow:auto;
+    }
+    .step{ margin:6px 0; font-size:13px; }
+    .step small{ color:#6b7280 }
+    .summary{ font-weight:600; margin-bottom:8px; text-align:left; }
+
+    @media (max-width: 900px){
+      .map-grid{ grid-template-columns: 1fr; }
+      #map, #steps{ height:360px; }
+    }
+
+    /* ---------- Redesigned Planner Bar (pills) ---------- */
+    .planner-inline--pill{
+      gap:14px;
+      background:#fff;
+      border:1px solid #e8eaf0;
+      border-radius:28px;
+      padding:14px;
+      box-shadow: 0 8px 24px rgba(17,24,39,.06);
+    }
+
+    /* Full field (Start / Destination) */
+    .field{
+      flex: 1 1 320px;
+      text-align: left;
+      display: grid;
+      gap: 6px;
+    }
+    .field__label{
+      font-size: 12px; font-weight: 700; letter-spacing:.02em;
+      color:#6b7280; padding-left: 14px;
+    }
+    .field__shell{
+      position: relative;
+      display:flex; align-items:center; gap:10px;
+      height:48px; padding:0 14px 0 42px;
+      background:#f9fafb;
+      border:1px solid #e6e8ee; border-radius:16px;
+      transition: border-color .2s, background .2s, box-shadow .2s;
+    }
+    .field__shell:hover{ background:#fff; }
+    .field__shell:focus-within{
+      background:#fff;
+      border-color:#9db4ff;
+      box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    }
+    .field__icon{
+      position:absolute; left:12px; width:18px; height:18px; fill:#6b7280;
+    }
+    .field__input{
+      width:100%; border:0; outline:0; background:transparent;
+      font-size:14px; color:#111827;
+      pointer-events:none; /* overlay handles events */
+    }
+    .field__clear{
+      position:absolute; right:8px;
+      width:28px; height:28px; border:0; border-radius:999px;
+      background:transparent; cursor:pointer; font-size:14px; line-height:1;
+      color:#9aa1ac;
+    }
+    .field__clear:hover{ background:#f3f4f6; color:#6b7280; }
+    .field__overlay{
+      position:absolute; inset:0; border-radius:16px; z-index:2;
+    }
+
+    /* Transparent Place Autocomplete overlay */
+    gmpx-place-autocomplete.pac-overlay{
+      position:absolute; inset:0; z-index:3;
+      --gmpx-color-on-surface:#111827;
+      --gmpx-color-outline:#d5d8de;
+      --gmpx-border-radius:16px;
+    }
+    gmpx-place-autocomplete.pac-overlay::part(container),
+    gmpx-place-autocomplete.pac-overlay::part(input){
+      background:transparent !important;
+      border:none !important; box-shadow:none !important; height:100%;
+    }
+    gmpx-place-autocomplete.pac-overlay::part(leading-icon),
+    gmpx-place-autocomplete.pac-overlay::part(trailing-icon){ display:none !important; }
+    gmpx-place-autocomplete.pac-overlay::part(panel){
+      border:1px solid #e6e8ee; border-radius:12px; background:#fff;
+      box-shadow:0 12px 32px rgba(0,0,0,.10); margin-top:8px;
+    }
+    gmpx-place-autocomplete.pac-overlay::part(option){ padding:10px 12px; font-size:14px; }
+
+    /* Compact numeric pills */
+    .mini{
+      flex: 0 0 130px; display:grid; gap:6px; text-align:left;
+    }
+    .mini__label{
+      font-size:12px; font-weight:700; color:#6b7280; padding-left:12px;
+    }
+    .mini input{
+      height:48px; width:100%;
+      background:#f9fafb; border:1px solid #e6e8ee; border-radius:16px;
+      padding:0 12px; font-size:14px; outline:0;
+    }
+    .mini input:hover{ background:#fff; }
+    .mini input:focus{
+      background:#fff; border-color:#9db4ff; box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    }
+
+    .pill-go{ height:48px; padding:0 22px; border-radius:16px; }
+
+    /* Responsive stacking */
+    @media (max-width: 980px){
+      .planner-inline--pill{ flex-wrap:wrap; padding:12px; }
+      .field{ flex-basis:100%; }
+      .mini{ flex-basis:calc(50% - 7px); }
+    }
+    @media (max-width: 520px){
+      .mini{ flex-basis:100%; }
+    }
   </style>
 </head>
 <body>
-  <!-- auth gate -->
+  <!-- Simple auth gate -->
   <script>
     if (!localStorage.getItem('signedIn')) {
       window.location.replace('login.html');
@@ -97,24 +212,47 @@
     <div class="container">
       <h1 class="h1" id="welcomeText">Hello, Let’s Plan Your Next Road Trip</h1>
 
-      <!-- One-line planner bar -->
-      <div class="planner-inline">
-        <label class="input">
-          <input id="startInput" placeholder="Starting Location" autocomplete="off" />
+      <!-- Redesigned one-line planner bar -->
+      <div class="planner-inline planner-inline--pill">
+
+        <!-- START field -->
+        <label class="field" id="startWrap">
+          <span class="field__label">Start</span>
+          <div class="field__shell">
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24">
+              <path d="M10 20s6-5.33 6-10a6 6 0 10-12 0c0 4.67 6 10 6 10zM10 12a2 2 0 110-4 2 2 0 010 4z"/>
+            </svg>
+            <input id="startInput" class="native-text field__input" placeholder="Enter starting point" autocomplete="off" />
+            <button class="field__clear" type="button" aria-label="Clear start" data-clear="#startInput">✕</button>
+            <div class="pac-host field__overlay" id="startPacHost" aria-label="Starting Location"></div>
+          </div>
         </label>
 
-        <label class="input">
-          <input id="destInput" placeholder="Destination" autocomplete="off" />
+        <!-- DEST field -->
+        <label class="field" id="destWrap">
+          <span class="field__label">Destination</span>
+          <div class="field__shell">
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24">
+              <path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
+            </svg>
+            <input id="destInput" class="native-text field__input" placeholder="Where to?" autocomplete="off" />
+            <button class="field__clear" type="button" aria-label="Clear destination" data-clear="#destInput">✕</button>
+            <div class="pac-host field__overlay" id="destPacHost" aria-label="Destination"></div>
+          </div>
         </label>
 
-        <label class="input small">
-          <input id="gasInput" type="number" min="0" step="1" placeholder="Gas" />
+        <!-- Compact numeric pills -->
+        <label class="mini" title="Estimated gas budget">
+          <span class="mini__label">Gas</span>
+          <input id="gasInput" type="number" min="0" step="1" inputmode="numeric" />
         </label>
 
-        <label class="input small">
-          <input id="breaksInput" type="number" min="0" step="1" placeholder="# Breaks" />
+        <label class="mini" title="Number of breaks">
+          <span class="mini__label">Breaks</span>
+          <input id="breaksInput" type="number" min="0" step="1" inputmode="numeric" />
         </label>
 
+        <!-- Filters -->
         <div class="filter-wrap">
           <button class="btn ghost" id="filterBtn" aria-haspopup="true" aria-expanded="false">Filters</button>
           <div class="filter-menu" id="filterMenu" role="menu" aria-label="Filters">
@@ -131,22 +269,22 @@
           </div>
         </div>
 
-        <button class="btn primary" id="goBtn">Go</button>
+        <button class="btn primary pill-go" id="goBtn">Go</button>
       </div>
 
-      <!-- Collapsible results with map placeholder -->
+      <!-- Collapsible results with live Google Map -->
       <div id="results" class="results" aria-hidden="true">
         <div class="results-inner">
           <div class="results-head">
             <div class="chips" id="summaryChips"></div>
-            <span class="muted" id="statusText">Map preview (placeholder)</span>
+            <span class="muted" id="statusText">Map ready</span>
           </div>
 
-          <div class="map-card">
-            <img src="./assets/roadtrip.jpeg" alt="Map preview"
-                 onerror="this.remove(); document.getElementById('mapFallback').style.display='block'">
-            <div id="mapFallback" class="map-fallback" style="display:none">
-              Map placeholder — wire in your real map here later.
+          <div class="map-grid">
+            <div id="map" aria-label="Route map"></div>
+            <div id="steps">
+              <div class="summary" id="routeSummary">Enter a route and press Go.</div>
+              <!-- steps go here -->
             </div>
           </div>
         </div>
@@ -160,7 +298,7 @@
   </footer>
 
   <script>
-    // footer year + welcome text
+    // Footer year + personalized welcome
     document.getElementById('y').textContent = new Date().getFullYear();
     const firstName = localStorage.getItem("firstName");
     const welcomeText = document.getElementById("welcomeText");
@@ -182,9 +320,12 @@
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleMenu(false); });
 
-    // Results show/hide + chips
-    const resultsEl = document.getElementById('results');
+    // Results helpers
+    const resultsEl  = document.getElementById('results');
     const statusText = document.getElementById('statusText');
+    const stepsEl    = document.getElementById('steps');
+    const summaryEl  = document.getElementById('routeSummary');
+
     function openResults(){ resultsEl.classList.add('open'); resultsEl.setAttribute('aria-hidden','false'); }
     function closeResults(){ resultsEl.classList.remove('open'); resultsEl.setAttribute('aria-hidden','true'); }
 
@@ -200,6 +341,118 @@
         mk(`Types: ${types.length ? types.join(', ') : 'None'}`),
         mk(`Off-route: ${dist}`)
       );
+    }
+
+    // Transparent overlay Place Autocomplete helper
+    async function attachPlaceAutocomplete({ hostId, visibleInputId, placeholder }) {
+      const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
+      const host = document.getElementById(hostId);
+      const visibleInput = document.getElementById(visibleInputId);
+
+      // @ts-ignore
+      const pac = new PlaceAutocompleteElement();
+      pac.classList.add('pac-overlay');     // overlay + transparent
+      pac.setAttribute("aria-label", placeholder);
+      try { pac.placeholder = placeholder; } catch(_) {}
+
+      // Light tokens (dropdown readability)
+      pac.style.setProperty('--gmpx-color-on-surface', '#111827');
+      pac.style.setProperty('--gmpx-color-outline', '#d5d8de');
+      pac.style.setProperty('--gmpx-border-radius', '16px');
+
+      host.appendChild(pac);
+
+      // Mirror typing into the visible input
+      pac.addEventListener("input", () => {
+        visibleInput.value = pac.value || pac.valueText || "";
+      });
+
+      // On suggestion click -> use formatted address
+      pac.addEventListener("gmp-select", async ({ placePrediction }) => {
+        const place = placePrediction.toPlace();
+        await place.fetchFields({ fields: ["formattedAddress"] });
+        visibleInput.value = place.formattedAddress || (pac.value || pac.valueText || "");
+      });
+
+      return pac;
+    }
+
+    // Google Maps: map + directions
+    let map, directionsService, directionsRenderer;
+
+    async function initMap(){
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 39.5, lng: -98.35 }, zoom: 5, mapTypeControl: false
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: false,
+        polylineOptions: { strokeWeight: 6 }
+      });
+
+      // Attach transparent autocomplete overlays
+      await attachPlaceAutocomplete({
+        hostId: "startPacHost",
+        visibleInputId: "startInput",
+        placeholder: "Enter starting point"
+      });
+      await attachPlaceAutocomplete({
+        hostId: "destPacHost",
+        visibleInputId: "destInput",
+        placeholder: "Where to?"
+      });
+
+      // Enter triggers Go
+      ["startInput","destInput","gasInput","breaksInput"].forEach(id=>{
+        const el = document.getElementById(id);
+        el.addEventListener("keydown", e=>{
+          if(e.key==="Enter") document.getElementById("goBtn").click();
+        });
+      });
+
+      // Clear buttons
+      document.querySelectorAll('.field__clear').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sel = btn.getAttribute('data-clear');
+          const input = document.querySelector(sel);
+          if (input){ input.value = ''; }
+          const wrap = btn.closest('.field');
+          const pac = wrap?.querySelector('gmpx-place-autocomplete');
+          if (pac){ pac.value = ''; pac.valueText = ''; }
+          input?.dispatchEvent(new Event('input', { bubbles:true }));
+          input?.focus();
+        });
+      });
+    }
+
+    async function renderRoute(origin, destination){
+      statusText.textContent = 'Loading route...';
+      stepsEl.innerHTML = '';
+      try{
+        const res = await directionsService.route({
+          origin, destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: false
+        });
+
+        directionsRenderer.setDirections(res);
+        const leg = res.routes[0].legs[0];
+
+        summaryEl.textContent = `${leg.start_address} → ${leg.end_address} — ${leg.distance.text} • ${leg.duration.text}`;
+        leg.steps.forEach((s, i) => {
+          const row = document.createElement('div');
+          row.className = 'step';
+          row.innerHTML = `${i+1}. ${s.instructions} <small>(${s.distance.text})</small>`;
+          stepsEl.appendChild(row);
+        });
+        statusText.textContent = 'Route loaded';
+      }catch(err){
+        statusText.textContent = 'Directions request failed';
+        summaryEl.textContent = 'Could not load route. Please check inputs.';
+        console.error(err);
+      }
     }
 
     // Validate inputs and open results
@@ -219,10 +472,16 @@
       const dist  = (document.querySelector('input[name="dist"]:checked')?.value) || '≤ 3 km';
 
       renderChips({ start, dest, gas, breaks, types, dist });
-      statusText.textContent = 'Map preview (placeholder)';
       openResults();
+      renderRoute(start, dest);
       toggleMenu(false);
     });
+
+    // Expose initMap for the JS API callback
+    window.initMap = initMap;
   </script>
+
+  <!-- Load Google Maps JS API (replace key if needed) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCr1WhJtX6cLLu6UCMUVGiKm4mnmuGD6E8&libraries=places&callback=initMap" async defer></script>
 </body>
 </html>

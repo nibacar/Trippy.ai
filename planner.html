@@ -3,207 +3,79 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Trippy — Planner</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Trippy — Platform (All Stops Shown + Chunked Routing)</title>
   <style>
     :root { color-scheme: light; }
-
-    /* ---------- Layout / existing styles ---------- */
-    .hero { text-align: center; }
-    .h1   { font-size: 36px; font-weight: 800; margin: 40px 0; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji; color:#111827; background:#f3f4f6; }
+    .container{ max-width:1100px; margin:0 auto; padding:0 16px; }
+    .header{ background:#fff; border-bottom:1px solid #e6e8ee; }
+    .header-inner{ display:flex; align-items:center; justify-content:space-between; height:56px; }
+    .brand{ font-weight:800; letter-spacing:.2px; }
+    .nav a{ margin-left:14px; color:#374151; text-decoration:none; }
+    .hero { text-align: center; padding:22px 0 8px; }
+    .h1   { font-size: 32px; font-weight: 800; margin: 20px 0; }
 
     .planner-inline{
       display:flex; align-items:center; justify-content:center; gap:12px;
-      background:#f2f2f2; padding:18px; border-radius:36px;
-      box-shadow:inset 0 1px 3px rgba(0,0,0,.08);
-      max-width:1100px; margin:0 auto;
+      background:#fff; padding:14px; border-radius:28px;
+      border:1px solid #e8eaf0; box-shadow: 0 8px 24px rgba(17,24,39,.06);
+      max-width:1100px; margin:0 auto; flex-wrap:wrap;
     }
-
-    .input{
-      position:relative; /* kept for legacy elements if any */
-      flex:1; height:46px; display:flex; align-items:center;
-      background:#fff; border:1px solid #d5d8de; border-radius:999px; padding:0 14px;
-    }
-    .input.small{ flex:0 0 140px; }
-    .input input{ width:100%; border:0; outline:0; background:transparent; font-size:14px; }
-
-    .btn{ height:46px; border-radius:999px; font-weight:700; cursor:pointer }
-    .btn.primary{ background:#111827; color:#fff; padding:0 22px }
-    .btn.primary:hover{ filter:brightness(1.05) }
-    .btn.ghost{ background:#fff; border:1px solid #d5d8de; padding:0 16px }
-
-    .filter-wrap{ position:relative }
-    .filter-menu{
-      display:none; position:absolute; top:52px; right:0; z-index:30;
-      width:240px; padding:10px; background:#fff; border:1px solid #e5e7eb;
-      border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12); text-align:left;
-    }
-    .filter-menu.open{ display:block }
-    .menu-head{ font-weight:700; font-size:14px; margin:4px 0 8px }
-    .menu-row{ display:flex; align-items:center; gap:8px; padding:6px 4px; border-radius:6px; cursor:pointer; user-select:none }
-    .menu-row:hover{ background:#f6f7f9 }
-    .menu-sep{ height:1px; background:#eee; margin:8px 0 }
-
-    .results{
-      max-width:1100px; margin:16px auto 0;
-      border:1px solid #e6e8ee; background:#fff; border-radius:20px;
-      box-shadow:0 8px 24px rgba(0,0,0,.06);
-      overflow:hidden; transition:grid-template-rows .35s ease, padding .35s ease;
-      display:grid; grid-template-rows:0fr; padding:0 20px;
-    }
-    .results.open{ grid-template-rows:1fr; padding:16px 20px 20px; }
-    .results-inner{ min-height:0; overflow:hidden; }
-
-    .results-head{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      margin-bottom:12px;
-    }
-    .chips{ display:flex; flex-wrap:wrap; gap:8px }
-    .chip{
-      padding:6px 10px; font-size:12px; color:#111; background:#f4f6f9;
-      border:1px solid #e6eaf2; border-radius:999px;
-    }
-    .muted{ color:#6b7280; font-size:13px }
-
-    .map-grid{ display:grid; grid-template-columns: 2fr 1fr; gap:12px; }
-    #map{
-      width:100%; height:420px; border:1px solid #e6e8ee;
-      border-radius:16px; overflow:hidden;
-    }
-    #steps{
-      height:420px; border:1px solid #e6e8ee; border-radius:16px;
-      padding:12px; text-align:left; overflow:auto;
-    }
-    .step{ margin:6px 0; font-size:13px; }
-    .step small{ color:#6b7280 }
-    .summary{ font-weight:600; margin-bottom:8px; text-align:left; }
-
-    @media (max-width: 900px){
-      .map-grid{ grid-template-columns: 1fr; }
-      #map, #steps{ height:360px; }
-    }
-
-    /* ---------- Redesigned Planner Bar (pills) ---------- */
-    .planner-inline--pill{
-      gap:14px;
-      background:#fff;
-      border:1px solid #e8eaf0;
-      border-radius:28px;
-      padding:14px;
-      box-shadow: 0 8px 24px rgba(17,24,39,.06);
-    }
-
-    /* Full field (Start / Destination) */
-    .field{
-      flex: 1 1 320px;
-      text-align: left;
-      display: grid;
-      gap: 6px;
-    }
-    .field__label{
-      font-size: 12px; font-weight: 700; letter-spacing:.02em;
-      color:#6b7280; padding-left: 14px;
-    }
+    .field{ flex: 1 1 360px; display:grid; gap:6px; text-align:left; }
+    .field__label{ font-size:12px; font-weight:700; color:#6b7280; padding-left:14px; }
     .field__shell{
-      position: relative;
-      display:flex; align-items:center; gap:10px;
-      height:48px; padding:0 14px 0 42px;
-      background:#f9fafb;
+      position:relative; display:flex; align-items:center; gap:10px;
+      height:48px; padding:0 14px 0 42px; background:#f9fafb;
       border:1px solid #e6e8ee; border-radius:16px;
-      transition: border-color .2s, background .2s, box-shadow .2s;
+      transition:border-color .2s, background .2s, box-shadow .2s;
     }
     .field__shell:hover{ background:#fff; }
-    .field__shell:focus-within{
-      background:#fff;
-      border-color:#9db4ff;
-      box-shadow: 0 0 0 3px rgba(59,130,246,.15);
-    }
-    .field__icon{
-      position:absolute; left:12px; width:18px; height:18px; fill:#6b7280;
-    }
-    .field__input{
-      width:100%; border:0; outline:0; background:transparent;
-      font-size:14px; color:#111827;
-      pointer-events:none; /* overlay handles events */
-    }
+    .field__icon{ position:absolute; left:12px; width:18px; height:18px; fill:#6b7280; }
+    .field__input{ width:100%; border:0; outline:0; background:transparent; font-size:14px; color:#111827; }
     .field__clear{
-      position:absolute; right:8px;
-      width:28px; height:28px; border:0; border-radius:999px;
-      background:transparent; cursor:pointer; font-size:14px; line-height:1;
-      color:#9aa1ac;
+      position:absolute; right:8px; width:28px; height:28px; border:0; border-radius:999px;
+      background:transparent; cursor:pointer; font-size:14px; line-height:1; color:#9aa1ac;
     }
     .field__clear:hover{ background:#f3f4f6; color:#6b7280; }
-    .field__overlay{
-      position:absolute; inset:0; border-radius:16px; z-index:2;
-    }
+    .btn{ height:48px; border-radius:16px; font-weight:700; cursor:pointer; }
+    .btn.primary{ background:#111827; color:#fff; padding:0 22px; }
+    .btn.primary:hover{ filter:brightness(1.05); }
 
-    /* Transparent Place Autocomplete overlay */
-    gmpx-place-autocomplete.pac-overlay{
-      position:absolute; inset:0; z-index:3;
-      --gmpx-color-on-surface:#111827;
-      --gmpx-color-outline:#d5d8de;
-      --gmpx-border-radius:16px;
+    .results{
+      max-width:1100px; margin:16px auto 20px; border:1px solid #e6e8ee; background:#fff; border-radius:20px;
+      box-shadow:0 8px 24px rgba(0,0,0,.06); overflow:hidden;
     }
-    gmpx-place-autocomplete.pac-overlay::part(container),
-    gmpx-place-autocomplete.pac-overlay::part(input){
-      background:transparent !important;
-      border:none !important; box-shadow:none !important; height:100%;
-    }
-    gmpx-place-autocomplete.pac-overlay::part(leading-icon),
-    gmpx-place-autocomplete.pac-overlay::part(trailing-icon){ display:none !important; }
-    gmpx-place-autocomplete.pac-overlay::part(panel){
-      border:1px solid #e6e8ee; border-radius:12px; background:#fff;
-      box-shadow:0 12px 32px rgba(0,0,0,.10); margin-top:8px;
-    }
-    gmpx-place-autocomplete.pac-overlay::part(option){ padding:10px 12px; font-size:14px; }
+    .results-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid #eef1f6; }
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    .chip{ padding:6px 10px; font-size:12px; color:#111; background:#f4f6f9; border:1px solid #e6eaf2; border-radius:999px; }
+    .muted{ color:#6b7280; font-size:13px; }
 
-    /* Compact numeric pills */
-    .mini{
-      flex: 0 0 130px; display:grid; gap:6px; text-align:left;
-    }
-    .mini__label{
-      font-size:12px; font-weight:700; color:#6b7280; padding-left:12px;
-    }
-    .mini input{
-      height:48px; width:100%;
-      background:#f9fafb; border:1px solid #e6e8ee; border-radius:16px;
-      padding:0 12px; font-size:14px; outline:0;
-    }
-    .mini input:hover{ background:#fff; }
-    .mini input:focus{
-      background:#fff; border-color:#9db4ff; box-shadow: 0 0 0 3px rgba(59,130,246,.15);
-    }
+    .map-grid{ display:grid; grid-template-columns: 2fr 1fr; gap:12px; padding:12px 16px 18px; }
+    #map{ width:100%; height:520px; border:1px solid #e6e8ee; border-radius:16px; overflow:hidden; }
+    #steps{ height:520px; border:1px solid #e6e8ee; border-radius:16px; padding:12px; text-align:left; overflow:auto; }
+    .summary{ font-weight:600; margin-bottom:8px; }
+    .stop-card{ border:1px solid #eceff5; border-radius:12px; padding:10px; margin:10px 0; display:grid; gap:6px; background:#fafbff; }
+    .stop-title{ font-weight:700; font-size:14px; display:flex; align-items:center; gap:6px; }
+    .stop-num{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:#111827; color:#fff; font-size:12px; font-weight:800; }
+    .stop-meta{ color:#6b7280; font-size:12px; display:flex; gap:10px; flex-wrap:wrap; }
+    .stop-actions a{ font-size:12px; margin-right:10px; text-decoration:underline; }
 
-    .pill-go{ height:48px; padding:0 22px; border-radius:16px; }
-
-    /* Responsive stacking */
     @media (max-width: 980px){
-      .planner-inline--pill{ flex-wrap:wrap; padding:12px; }
+      .planner-inline{ padding:12px; }
       .field{ flex-basis:100%; }
-      .mini{ flex-basis:calc(50% - 7px); }
-    }
-    @media (max-width: 520px){
-      .mini{ flex-basis:100%; }
+      .map-grid{ grid-template-columns:1fr; }
+      #map, #steps{ height:420px; }
     }
   </style>
 </head>
 <body>
-  <!-- Simple auth gate -->
-  <script>
-    if (!localStorage.getItem('signedIn')) {
-      window.location.replace('login.html');
-    }
-  </script>
-
   <header class="header">
     <div class="container header-inner">
-      <a href="index.html" style="text-decoration:none; color:inherit; cursor:default;">
-        <div class="brand"><span class="dot"></span> Trippy</div>
-      </a>
+      <div class="brand">Trippy</div>
       <nav class="nav">
-        <a href="index.html">Home</a>
-        <a href="planner.html">Trips</a>
-        <a href="planner.html">Profile</a>
+        <a href="#">Home</a>
+        <a href="#">Trips</a>
+        <a href="#" aria-current="page">Platform</a>
       </nav>
     </div>
   </header>
@@ -212,80 +84,41 @@
     <div class="container">
       <h1 class="h1" id="welcomeText">Hello, Let’s Plan Your Next Road Trip</h1>
 
-      <!-- Redesigned one-line planner bar -->
-      <div class="planner-inline planner-inline--pill">
-
-        <!-- START field -->
+      <div class="planner-inline">
+        <!-- START -->
         <label class="field" id="startWrap">
           <span class="field__label">Start</span>
           <div class="field__shell">
-            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24">
-              <path d="M10 20s6-5.33 6-10a6 6 0 10-12 0c0 4.67 6 10 6 10zM10 12a2 2 0 110-4 2 2 0 010 4z"/>
-            </svg>
-            <input id="startInput" class="native-text field__input" placeholder="Enter starting point" autocomplete="off" />
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24"><path d="M10 20s6-5.33 6-10a6 6 0 10-12 0c0 4.67 6 10 6 10zM10 12a2 2 0 110-4 2 2 0 010 4z"/></svg>
+            <input id="startInput" class="field__input" placeholder="Enter starting point" autocomplete="off" />
             <button class="field__clear" type="button" aria-label="Clear start" data-clear="#startInput">✕</button>
-            <div class="pac-host field__overlay" id="startPacHost" aria-label="Starting Location"></div>
+            <div class="field__overlay" id="startPacHost" aria-label="Starting Location"></div>
           </div>
         </label>
 
-        <!-- DEST field -->
+        <!-- DEST -->
         <label class="field" id="destWrap">
           <span class="field__label">Destination</span>
           <div class="field__shell">
-            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24">
-              <path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
-            </svg>
-            <input id="destInput" class="native-text field__input" placeholder="Where to?" autocomplete="off" />
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+            <input id="destInput" class="field__input" placeholder="Where to?" autocomplete="off" />
             <button class="field__clear" type="button" aria-label="Clear destination" data-clear="#destInput">✕</button>
-            <div class="pac-host field__overlay" id="destPacHost" aria-label="Destination"></div>
+            <div class="field__overlay" id="destPacHost" aria-label="Destination"></div>
           </div>
         </label>
 
-        <!-- Compact numeric pills -->
-        <label class="mini" title="Estimated gas budget">
-          <span class="mini__label">Gas</span>
-          <input id="gasInput" type="number" min="0" step="1" inputmode="numeric" />
-        </label>
-
-        <label class="mini" title="Number of breaks">
-          <span class="mini__label">Breaks</span>
-          <input id="breaksInput" type="number" min="0" step="1" inputmode="numeric" />
-        </label>
-
-        <!-- Filters -->
-        <div class="filter-wrap">
-          <button class="btn ghost" id="filterBtn" aria-haspopup="true" aria-expanded="false">Filters</button>
-          <div class="filter-menu" id="filterMenu" role="menu" aria-label="Filters">
-            <div class="menu-head">Stop types</div>
-            <label class="menu-row"><input type="checkbox" class="f-type" value="Gas" checked /> Gas</label>
-            <label class="menu-row"><input type="checkbox" class="f-type" value="Food" checked /> Food</label>
-            <label class="menu-row"><input type="checkbox" class="f-type" value="Attractions" /> Attractions</label>
-            <label class="menu-row"><input type="checkbox" class="f-type" value="Rest Area" /> Rest Area</label>
-            <div class="menu-sep"></div>
-            <div class="menu-head">Max off-route distance</div>
-            <label class="menu-row"><input type="radio" name="dist" value="≤ 3 km" checked /> ≤ 3 km</label>
-            <label class="menu-row"><input type="radio" name="dist" value="≤ 5 km" /> ≤ 5 km</label>
-            <label class="menu-row"><input type="radio" name="dist" value="≤ 10 km" /> ≤ 10 km</label>
-          </div>
-        </div>
-
-        <button class="btn primary pill-go" id="goBtn">Go</button>
+        <button class="btn primary" id="goBtn">Go</button>
       </div>
 
-      <!-- Collapsible results with live Google Map -->
-      <div id="results" class="results" aria-hidden="true">
-        <div class="results-inner">
-          <div class="results-head">
-            <div class="chips" id="summaryChips"></div>
-            <span class="muted" id="statusText">Map ready</span>
-          </div>
-
-          <div class="map-grid">
-            <div id="map" aria-label="Route map"></div>
-            <div id="steps">
-              <div class="summary" id="routeSummary">Enter a route and press Go.</div>
-              <!-- steps go here -->
-            </div>
+      <div class="results" id="results">
+        <div class="results-head">
+          <div class="chips" id="summaryChips"></div>
+          <span class="muted" id="statusText">Map ready</span>
+        </div>
+        <div class="map-grid">
+          <div id="map" aria-label="Route map"></div>
+          <div id="steps">
+            <div class="summary" id="routeSummary">All selected gas stops (numbered) will appear here, and the route will include every stop.</div>
           </div>
         </div>
       </div>
@@ -294,56 +127,49 @@
   </section>
 
   <footer class="footer">
-    <div class="container">© <span id="y"></span> Trippy</div>
+    <div class="container" style="padding:16px; color:#6b7280;">© <span id="y"></span> Trippy</div>
   </footer>
 
   <script>
-    // Footer year + personalized welcome
+    // Footer + welcome
     document.getElementById('y').textContent = new Date().getFullYear();
     const firstName = localStorage.getItem("firstName");
-    const welcomeText = document.getElementById("welcomeText");
-    welcomeText.textContent = firstName
-      ? `Hello ${firstName}, Let’s Plan Your Next Road Trip`
-      : "Hello, Let’s Plan Your Next Road Trip";
+    document.getElementById("welcomeText").textContent =
+      firstName ? `Hello ${firstName}, Let’s Plan Your Next Road Trip` : "Hello, Let’s Plan Your Next Road Trip";
 
-    // Filters dropdown behavior
-    const filterBtn  = document.getElementById('filterBtn');
-    const filterMenu = document.getElementById('filterMenu');
-    function toggleMenu(open) {
-      const willOpen = open ?? !filterMenu.classList.contains('open');
-      filterMenu.classList.toggle('open', willOpen);
-      filterBtn.setAttribute('aria-expanded', String(willOpen));
-    }
-    filterBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
-    document.addEventListener('click', (e) => {
-      if (!filterMenu.contains(e.target) && e.target !== filterBtn) toggleMenu(false);
-    });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleMenu(false); });
-
-    // Results helpers
-    const resultsEl  = document.getElementById('results');
     const statusText = document.getElementById('statusText');
     const stepsEl    = document.getElementById('steps');
     const summaryEl  = document.getElementById('routeSummary');
 
-    function openResults(){ resultsEl.classList.add('open'); resultsEl.setAttribute('aria-hidden','false'); }
-    function closeResults(){ resultsEl.classList.remove('open'); resultsEl.setAttribute('aria-hidden','true'); }
-
-    function renderChips({ start, dest, gas, breaks, types, dist }) {
+    function renderChips({ start, dest, stopsCount }) {
       const wrap = document.getElementById('summaryChips');
       wrap.innerHTML = '';
       const mk = (t) => { const s = document.createElement('span'); s.className='chip'; s.textContent=t; return s; };
-      wrap.append(
-        mk(`From: ${start}`),
-        mk(`To: ${dest}`),
-        mk(`Gas: ${gas}`),
-        mk(`Breaks: ${breaks}`),
-        mk(`Types: ${types.length ? types.join(', ') : 'None'}`),
-        mk(`Off-route: ${dist}`)
-      );
+      wrap.append(mk(`From: ${start}`), mk(`To: ${dest}`), mk(`Gas stops: ${stopsCount}`));
     }
 
-    // Transparent overlay Place Autocomplete helper
+    // Extract API key from Maps <script> tag for REST calls.
+    function extractMapsApiKey(){
+      const s = Array.from(document.scripts).find(sc => sc.src.includes('maps.googleapis.com/maps/api/js'));
+      if(!s) return null;
+      const u = new URL(s.src);
+      return u.searchParams.get('key');
+    }
+    const API_KEY = extractMapsApiKey();
+
+    // Google Maps objects
+    let map, directionsService;
+    let mainRenderer;                  // for first segment or short trips
+    let segmentRenderers = [];         // for chunked multi-segment rendering
+    let placesService, stopMarkers = [];
+    function clearStopMarkers(){ stopMarkers.forEach(m => m.setMap(null)); stopMarkers = []; }
+    function clearSegmentRenderers(){
+      if (mainRenderer){ mainRenderer.setMap(null); mainRenderer = null; }
+      segmentRenderers.forEach(r => r.setMap(null));
+      segmentRenderers = [];
+    }
+
+    // Transparent Place Autocomplete
     async function attachPlaceAutocomplete({ hostId, visibleInputId, placeholder }) {
       const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
       const host = document.getElementById(hostId);
@@ -351,137 +177,399 @@
 
       // @ts-ignore
       const pac = new PlaceAutocompleteElement();
-      pac.classList.add('pac-overlay');     // overlay + transparent
+      pac.classList.add('pac-overlay');
       pac.setAttribute("aria-label", placeholder);
       try { pac.placeholder = placeholder; } catch(_) {}
-
-      // Light tokens (dropdown readability)
-      pac.style.setProperty('--gmpx-color-on-surface', '#111827');
-      pac.style.setProperty('--gmpx-color-outline', '#d5d8de');
-      pac.style.setProperty('--gmpx-border-radius', '16px');
-
       host.appendChild(pac);
 
-      // Mirror typing into the visible input
-      pac.addEventListener("input", () => {
-        visibleInput.value = pac.value || pac.valueText || "";
-      });
-
-      // On suggestion click -> use formatted address
+      pac.addEventListener("input", () => { visibleInput.value = pac.value || pac.valueText || ""; });
       pac.addEventListener("gmp-select", async ({ placePrediction }) => {
         const place = placePrediction.toPlace();
         await place.fetchFields({ fields: ["formattedAddress"] });
         visibleInput.value = place.formattedAddress || (pac.value || pac.valueText || "");
       });
-
       return pac;
     }
 
-    // Google Maps: map + directions
-    let map, directionsService, directionsRenderer;
+    function renderStopCard({ place, etaSec, markSec, priceUSD }, idx){
+      const n = idx + 1;
+      const card = document.createElement('div');
+      card.className = 'stop-card';
 
+      const title = document.createElement('div');
+      title.className = 'stop-title';
+      title.innerHTML = `<span class="stop-num">${n}</span> <span>${place.displayName?.text || place.name || 'Gas Stop'}</span>`;
+      const meta = document.createElement('div');
+      meta.className = 'stop-meta';
+      const hrsMark = (markSec/3600).toFixed(1);
+      const hrsEta  = (etaSec/3600).toFixed(1);
+      const bits = [];
+      if (place.formattedAddress) bits.push(place.formattedAddress);
+      bits.push(`Target ~${hrsMark}h from start • ETA ~${hrsEta}h`);
+      if (typeof priceUSD === 'number') bits.push(`~$${priceUSD.toFixed(2)}/gal`);
+      meta.textContent = bits.join(' • ');
+      const actions = document.createElement('div');
+      actions.className = 'stop-actions';
+      if (place.googleMapsUri){ const a=document.createElement('a'); a.href=place.googleMapsUri; a.target='_blank'; a.rel='noopener'; a.textContent='View on Google Maps'; actions.appendChild(a); }
+      if (place.websiteUri){ const w=document.createElement('a'); w.href=place.websiteUri;  w.target='_blank'; w.rel='noopener'; w.textContent='Website'; actions.appendChild(w); }
+      card.append(title, meta, actions);
+      stepsEl.appendChild(card);
+    }
+
+    // Numbered markers
+    function addStopMarkers(picks){
+      clearStopMarkers();
+      picks.forEach((p, i) => {
+        const lat = p.place.location.latitude;
+        const lng = p.place.location.longitude;
+        stopMarkers.push(new google.maps.Marker({
+          map,
+          position: {lat, lng},
+          label: { text: String(i+1), color: "#fff", fontWeight: "800" },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: "#111827",
+            fillOpacity: 1,
+            strokeWeight: 0,
+            scale: 10
+          },
+          title: `Stop ${i+1}: ${p.place.displayName?.text || 'Gas'}`
+        }));
+      });
+    }
+
+    // Convert overview_path to encoded polyline
+    function encodeOverviewPathToPolyline(route){
+      const path = route.overview_path; // LatLng[]
+      return google.maps.geometry.encoding.encodePath(path);
+    }
+
+    // Places: gas stations along route — widen buffer if empty
+    async function fetchGasAlongRoute(encodedPolyline){
+      const buffers = [2500, 4000, 8000]; // meters
+      for (const buffer of buffers){
+        const payload = {
+          includedTypes: ["gas_station"],
+          maxResultCount: 200,
+          locationRestriction: { routePolyline: { encodedPolyline, buffer } }
+        };
+        const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": API_KEY,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.websiteUri"
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (json?.places?.length) return json.places;
+      }
+      return [];
+    }
+
+    // Utility
+    function chunk(arr, n){ const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; }
+
+    // Routes Matrix: ETA from origin to many destinations (returns seconds[] aligned with destinations)
+    async function computeETAsFromOrigin(originLatLng, destinationsLatLng){
+      const batches = chunk(destinationsLatLng, 90); // safe batch size
+      const all = [];
+      for (const batch of batches){
+        const payload = {
+          origins: [{ waypoint: { location: { latLng: originLatLng } } }],
+          destinations: batch.map(latLng => ({ waypoint: { location: { latLng } } })),
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_AWARE_OPTIMAL",
+          departureTime: { seconds: Math.floor(Date.now()/1000) }
+        };
+        const res = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": API_KEY
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok){
+          all.push(...batch.map(()=>null));
+          continue;
+        }
+        const text = await res.text();
+        const rows = text.trim().split("\n").map(line => { try { return JSON.parse(line); } catch { return {}; } });
+        const secs = rows.map(r => r?.duration?.duration?.seconds ?? r?.duration?.seconds ?? null);
+        all.push(...secs);
+      }
+      return all;
+    }
+
+    // ====== PRICE HOOK ======
+    async function fetchPriceUSD(place){
+      // TODO: call your backend (examples):
+      // const r = await fetch(`/api/gasprice?place_id=${encodeURIComponent(place.id)}`);
+      // if (r.ok){ const j = await r.json(); return typeof j.price === 'number' ? j.price : null; }
+      return null; // default: no live price → fallback to time closeness
+    }
+
+    // Pick stations for each 3h mark:
+    // - Always consider ANY gas station.
+    // - If many are near the mark, prefer lowest price among nearest-by-time candidates.
+    async function pickStationsPreferCheapest(places, etaSecs, leg){
+      const H = 3600;
+      const totalSec = leg.duration.value;
+
+      // cadence marks (skip final ~2h)
+      const marks = [];
+      for (let t = 3*H; t <= totalSec - 2*H; t += 3*H) marks.push(t);
+
+      const MAX_WINDOW_MIN   = 30;   // ±30m around mark to “compete” on price
+      const MIN_CANDIDATES   = 5;    // require at least this many in window to trigger price phase
+      const TOP_K_BY_TIME    = 12;   // cap # we price per mark
+      const windowSec        = MAX_WINDOW_MIN * 60;
+
+      const chosen = new Set();
+      const picks  = [];
+
+      for (const mark of marks){
+        const ranked = etaSecs
+          .map((s, i) => ({ idx:i, sec:s, d: s==null ? Infinity : Math.abs(s - mark) }))
+          .filter(o => o.sec != null && !chosen.has(o.idx))
+          .sort((a,b) => a.d - b.d);
+
+        if (!ranked.length) continue;
+
+        const inWindow = ranked.filter(o => o.d <= windowSec).slice(0, TOP_K_BY_TIME);
+
+        let pickIdx = null, pickEta = null, pickPrice = null;
+
+        if (inWindow.length >= MIN_CANDIDATES){
+          const pricePromises = inWindow.map(o => fetchPriceUSD(places[o.idx]).catch(()=>null));
+          const prices = await Promise.all(pricePromises);
+
+          let best = null;
+          for (let k=0; k<inWindow.length; k++){
+            const price = prices[k];
+            if (typeof price !== 'number') continue;
+            const cand = inWindow[k];
+            if (!best || price < best.price || (price === best.price && cand.d < best.d)){
+              best = { price, idx: cand.idx, eta: cand.sec, d: cand.d };
+            }
+          }
+          if (best){
+            pickIdx = best.idx; pickEta = best.eta; pickPrice = best.price;
+          }
+        }
+
+        if (pickIdx == null){
+          pickIdx = ranked[0].idx;
+          pickEta = ranked[0].sec;
+          pickPrice = null;
+        }
+
+        chosen.add(pickIdx);
+        picks.push({ place: places[pickIdx], etaSec: pickEta, markSec: mark, priceUSD: pickPrice });
+      }
+      return picks;
+    }
+
+    // --- Routing helper (handles long trips with many stops) ---
+    // Google Directions typically allows up to ~23 waypoints per request (subject to plan).
+    // We chunk: origin -> up to 23 waypoints -> join, then continue from last stop.
+    async function routeThroughAllStopsChunked(origin, destination, waypoints){
+      clearSegmentRenderers();
+
+      const MAX_WAYPOINTS_PER_REQUEST = 23; // conservative cap
+      const chunks = [];
+      let cursor = 0;
+
+      // Create chunks of up to MAX_WAYPOINTS_PER_REQUEST waypoints
+      while (cursor < waypoints.length){
+        chunks.push(waypoints.slice(cursor, cursor + MAX_WAYPOINTS_PER_REQUEST));
+        cursor += MAX_WAYPOINTS_PER_REQUEST;
+      }
+
+      let currentOrigin = origin;
+      let lastResult = null;
+
+      if (chunks.length === 0){
+        // simple route: origin -> destination
+        const result = await directionsService.route({
+          origin: currentOrigin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+          optimizeWaypoints: false,
+          drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+        });
+        mainRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false, polylineOptions:{ strokeWeight:6 } });
+        mainRenderer.setDirections(result);
+        return result;
+      }
+
+      // Route each chunk. For the last chunk, destination is the final destination.
+      for (let i=0; i<chunks.length; i++){
+        const isLast = i === chunks.length - 1;
+        const chunkWaypoints = chunks[i];
+        const chunkDest = isLast ? destination : chunkWaypoints[chunkWaypoints.length - 1].location;
+        const innerWaypoints = isLast ? chunkWaypoints : chunkWaypoints.slice(0, -1);
+
+        const result = await directionsService.route({
+          origin: currentOrigin,
+          destination: chunkDest,
+          waypoints: innerWaypoints,
+          optimizeWaypoints: false,
+          travelMode: google.maps.TravelMode.DRIVING,
+          drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+        });
+
+        const renderer = new google.maps.DirectionsRenderer({
+          map,
+          suppressMarkers:false,
+          polylineOptions:{ strokeWeight:6 }
+        });
+        renderer.setDirections(result);
+        segmentRenderers.push(renderer);
+
+        // Next segment starts from this chunk's destination
+        currentOrigin = chunkDest;
+        lastResult = result;
+      }
+
+      return lastResult;
+    }
+
+    function addStopMarkersNumbered(picks){
+      addStopMarkers(picks); // uses numbered labels and custom icons
+    }
+
+    async function renderRoute_Auto(origin, destination){
+      statusText.textContent = 'Loading route…';
+      stepsEl.innerHTML = '<div class="summary">Planning gas stops…</div>';
+      clearStopMarkers();
+      clearSegmentRenderers();
+
+      try {
+        // 1) Directions
+        const base = await directionsService.route({
+          origin, destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: false,
+          drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
+        });
+
+        // draw the base first (for fast visual), will be replaced by chunked render
+        mainRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false, polylineOptions:{ strokeWeight:6 } });
+        mainRenderer.setDirections(base);
+
+        const route = base.routes[0];
+        const leg   = route?.legs?.[0];
+
+        // 2) Polyline -> places along route (ANY gas station)
+        const encodedPolyline = encodeOverviewPathToPolyline(route);
+        statusText.textContent = 'Fetching gas stations along route…';
+        const places = await fetchGasAlongRoute(encodedPolyline);
+        if (!places.length){
+          summaryEl.textContent = `${leg.start_address} → ${leg.end_address} — ${leg.distance.text} • ${leg.duration.text}`;
+          statusText.textContent = 'No gas stations found along route';
+          renderChips({ start: leg.start_address, dest: leg.end_address, stopsCount: 0 });
+          return { waypoints: [], start: leg.start_address, dest: leg.end_address };
+        }
+
+        // 3) ETAs from start to each candidate
+        statusText.textContent = 'Scoring stations by time…';
+        const originLatLng = { latitude: leg.start_location.lat(), longitude: leg.start_location.lng() };
+        const destLatLngs = places.map(p => ({ latitude: p.location.latitude, longitude: p.location.longitude }));
+        const etaSecs = await computeETAsFromOrigin(originLatLng, destLatLngs);
+
+        // 4) Pick for each 3h mark (prefer cheapest when many nearby)
+        statusText.textContent = 'Selecting stops…';
+        const picks = await pickStationsPreferCheapest(places, etaSecs, leg);
+
+        // 5) UI: show ALL stops, numbered
+        stepsEl.innerHTML = '';
+        stepsEl.insertAdjacentHTML('beforeend',
+          `<div class="summary">All selected gas stops (numbered) — ${leg.start_address} → ${leg.end_address} • ${leg.distance.text} • ${leg.duration.text}</div>`
+        );
+        picks.forEach((p, i) => renderStopCard(p, i));
+
+        // 6) Map markers for ALL stops
+        addStopMarkersNumbered(picks);
+
+        // 7) Route through EVERY stop, in order (chunked if needed)
+        statusText.textContent = 'Routing through all stops…';
+        const waypoints = picks.map(p => ({
+          location: new google.maps.LatLng(p.place.location.latitude, p.place.location.longitude),
+          stopover: true
+        }));
+
+        const finalRes = await routeThroughAllStopsChunked(
+          leg.start_location,
+          leg.end_location,
+          waypoints
+        );
+
+        // 8) Totals display from the last segment we routed
+        const finalRoute = finalRes?.routes?.[0];
+        let totalMeters = 0, totalSecs = 0, legsOut = [];
+        if (finalRoute){
+          legsOut = finalRoute.legs || [];
+          totalMeters = legsOut.reduce((d, L) => d + (L.distance?.value || 0), 0);
+          totalSecs   = legsOut.reduce((d, L) => d + (L.duration?.value || 0), 0);
+        } else {
+          // If chunked across multiple renderers, approximate totals by summing each renderer's first route legs
+          segmentRenderers.forEach(r => {
+            const rd = r.getDirections();
+            const rr = rd?.routes?.[0];
+            if (rr?.legs?.length){
+              totalMeters += rr.legs.reduce((d,L)=> d + (L.distance?.value||0), 0);
+              totalSecs   += rr.legs.reduce((d,L)=> d + (L.duration?.value||0), 0);
+              legsOut = rr.legs; // keep last legs for start/end display
+            }
+          });
+        }
+
+        const lastLeg = legsOut?.[legsOut.length-1] || leg;
+        summaryEl.textContent = `With ${waypoints.length} gas stops: ${(totalMeters/1609.344).toFixed(1)} mi • ${(totalSecs/3600).toFixed(1)} h total`;
+        statusText.textContent = `Route loaded • ${waypoints.length} gas stops`;
+        renderChips({ start: leg.start_address, dest: lastLeg?.end_address || leg.end_address, stopsCount: waypoints.length });
+
+        return { waypoints, start: leg.start_address, dest: lastLeg?.end_address || leg.end_address };
+      } catch (err) {
+        console.error(err);
+        statusText.textContent = 'Failed to plan route';
+        summaryEl.textContent = 'Could not load route or gas stops. Check API enablement & key.';
+        return null;
+      }
+    }
+
+    // Init map + autocomplete
     async function initMap(){
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 39.5, lng: -98.35 }, zoom: 5, mapTypeControl: false
-      });
-
+      map = new google.maps.Map(document.getElementById("map"), { center: { lat:39.5, lng:-98.35 }, zoom:5, mapTypeControl:false });
       directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({
-        map,
-        suppressMarkers: false,
-        polylineOptions: { strokeWeight: 6 }
-      });
+      placesService = new google.maps.places.PlacesService(map);
 
-      // Attach transparent autocomplete overlays
-      await attachPlaceAutocomplete({
-        hostId: "startPacHost",
-        visibleInputId: "startInput",
-        placeholder: "Enter starting point"
-      });
-      await attachPlaceAutocomplete({
-        hostId: "destPacHost",
-        visibleInputId: "destInput",
-        placeholder: "Where to?"
-      });
+      await attachPlaceAutocomplete({ hostId:"startPacHost", visibleInputId:"startInput", placeholder:"Enter starting point" });
+      await attachPlaceAutocomplete({ hostId:"destPacHost",  visibleInputId:"destInput",  placeholder:"Where to?" });
 
-      // Enter triggers Go
-      ["startInput","destInput","gasInput","breaksInput"].forEach(id=>{
-        const el = document.getElementById(id);
-        el.addEventListener("keydown", e=>{
+      ["startInput","destInput"].forEach(id=>{
+        document.getElementById(id).addEventListener("keydown", e=>{
           if(e.key==="Enter") document.getElementById("goBtn").click();
         });
       });
 
-      // Clear buttons
-      document.querySelectorAll('.field__clear').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const sel = btn.getAttribute('data-clear');
-          const input = document.querySelector(sel);
-          if (input){ input.value = ''; }
-          const wrap = btn.closest('.field');
-          const pac = wrap?.querySelector('gmpx-place-autocomplete');
-          if (pac){ pac.value = ''; pac.valueText = ''; }
-          input?.dispatchEvent(new Event('input', { bubbles:true }));
-          input?.focus();
-        });
+      document.getElementById('goBtn').addEventListener('click', async () => {
+        const start = document.getElementById('startInput').value.trim();
+        const dest  = document.getElementById('destInput').value.trim();
+        if (!start || !dest) { alert('Please fill Starting Location and Destination.'); return; }
+        statusText.textContent = 'Planning…';
+        stepsEl.innerHTML = '<div class="summary">Planning gas stops…</div>';
+        await renderRoute_Auto(start, dest);
       });
     }
-
-    async function renderRoute(origin, destination){
-      statusText.textContent = 'Loading route...';
-      stepsEl.innerHTML = '';
-      try{
-        const res = await directionsService.route({
-          origin, destination,
-          travelMode: google.maps.TravelMode.DRIVING,
-          provideRouteAlternatives: false
-        });
-
-        directionsRenderer.setDirections(res);
-        const leg = res.routes[0].legs[0];
-
-        summaryEl.textContent = `${leg.start_address} → ${leg.end_address} — ${leg.distance.text} • ${leg.duration.text}`;
-        leg.steps.forEach((s, i) => {
-          const row = document.createElement('div');
-          row.className = 'step';
-          row.innerHTML = `${i+1}. ${s.instructions} <small>(${s.distance.text})</small>`;
-          stepsEl.appendChild(row);
-        });
-        statusText.textContent = 'Route loaded';
-      }catch(err){
-        statusText.textContent = 'Directions request failed';
-        summaryEl.textContent = 'Could not load route. Please check inputs.';
-        console.error(err);
-      }
-    }
-
-    // Validate inputs and open results
-    document.getElementById('goBtn').addEventListener('click', () => {
-      const start  = document.getElementById('startInput').value.trim();
-      const dest   = document.getElementById('destInput').value.trim();
-      const gas    = document.getElementById('gasInput').value.trim();
-      const breaks = document.getElementById('breaksInput').value.trim();
-
-      if (!start || !dest || gas === '' || breaks === '') {
-        alert('Please fill Starting Location, Destination, Gas, and # of Breaks.');
-        closeResults();
-        return;
-      }
-
-      const types = [...document.querySelectorAll('.f-type:checked')].map(i => i.value);
-      const dist  = (document.querySelector('input[name="dist"]:checked')?.value) || '≤ 3 km';
-
-      renderChips({ start, dest, gas, breaks, types, dist });
-      openResults();
-      renderRoute(start, dest);
-      toggleMenu(false);
-    });
-
-    // Expose initMap for the JS API callback
     window.initMap = initMap;
   </script>
 
-  <!-- Load Google Maps JS API (replace key if needed) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCr1WhJtX6cLLu6UCMUVGiKm4mnmuGD6E8&libraries=places&callback=initMap" async defer></script>
+  <!-- Google Maps JS API (include geometry for encoding) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YAIzaSyCr1WhJtX6cLLu6UCMUVGiKm4mnmuGD6E8&libraries=places,geometry&callback=initMap" async defer></script>
 </body>
 </html>

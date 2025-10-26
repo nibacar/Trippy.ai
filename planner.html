@@ -1,540 +1,535 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Trippy — Claude-Powered Route Attractions</title>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trippy — Route Planner with Attractions (Robust)</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji; color:#111827; background:#f3f4f6; }
+    .container{ max-width:1100px; margin:0 auto; padding:0 16px; }
+    .header{ background:#fff; border-bottom:1px solid #e6e8ee; }
+    .header-inner{ display:flex; align-items:center; justify-content:space-between; height:56px; }
+    .brand{ font-weight:800; letter-spacing:.2px; }
+    .nav a{ margin-left:14px; color:#374151; text-decoration:none; }
 
-    <!-- Styles -->
-    <style>
-      :root { color-scheme: light; }
+    .hero { text-align: center; padding:22px 0 8px; }
+    .h1   { font-size: 32px; font-weight: 800; margin: 20px 0; }
 
-      body {
-        margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-          Helvetica, Arial;
-        color: #111827;
-        background: #f3f4f6;
-      }
+    .planner-inline{
+      display:flex; align-items:center; justify-content:center; gap:12px; row-gap:10px;
+      background:#fff; padding:14px; border-radius:28px;
+      border:1px solid #e8eaf0; box-shadow: 0 8px 24px rgba(17,24,39,.06);
+      max-width:1100px; margin:0 auto; flex-wrap:wrap;
+    }
+    .field{ flex: 1 1 320px; display:grid; gap:6px; text-align:left; }
+    .field__label{ font-size:12px; font-weight:700; color:#6b7280; padding-left:14px; }
+    .field__shell{
+      position:relative; display:flex; align-items:center; gap:10px;
+      height:48px; padding:0 14px 0 42px; background:#f9fafb;
+      border:1px solid #e6e8ee; border-radius:16px;
+      transition:border-color .2s, background .2s, box-shadow .2s;
+    }
+    .field__shell:hover{ background:#fff; }
+    .field__shell:focus-within{ background:#fff; border-color:#9db4ff; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+    .field__icon{ position:absolute; left:12px; width:18px; height:18px; fill:#6b7280; }
+    .field__input{ width:100%; border:0; outline:0; background:transparent; font-size:14px; color:#111827; }
+    .field__clear{
+      position:absolute; right:8px; width:28px; height:28px; border:0; border-radius:999px;
+      background:transparent; cursor:pointer; font-size:14px; line-height:1; color:#9aa1ac;
+    }
+    .field__clear:hover{ background:#f3f4f6; color:#6b7280; }
+    .field__overlay{ position:absolute; inset:0; border-radius:16px; z-index:2; }
 
-      .container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+    /* Overlay Autocomplete styling */
+    gmpx-place-autocomplete.pac-overlay{
+      position:absolute; inset:0; z-index:3;
+      --gmpx-color-on-surface:#111827;
+      --gmpx-color-outline:#d5d8de;
+      --gmpx-border-radius:16px;
+    }
+    gmpx-place-autocomplete.pac-overlay::part(container),
+    gmpx-place-autocomplete.pac-overlay::part(input){
+      background:transparent !important; border:none !important; box-shadow:none !important; height:100%;
+    }
+    gmpx-place-autocomplete.pac-overlay::part(leading-icon),
+    gmpx-place-autocomplete.pac-overlay::part(trailing-icon){ display:none !important; }
+    gmpx-place-autocomplete.pac-overlay::part(panel){
+      border:1px solid #e6e8ee; border-radius:12px; background:#fff;
+      box-shadow:0 12px 32px rgba(0,0,0,.10); margin-top:8px;
+    }
+    gmpx-place-autocomplete.pac-overlay::part(option){ padding:10px 12px; font-size:14px; }
 
-      /* Header */
-      .header { background: #fff; border-bottom: 1px solid #e6e8ee; }
-      .header-inner {
-        display: flex; align-items: center; justify-content: space-between;
-        height: 56px;
-      }
-      .brand { font-weight: 800; letter-spacing: 0.2px; }
+    .btn{ height:40px; border-radius:12px; font-weight:700; cursor:pointer; border:1px solid #d9dce3; background:#fff; padding:0 14px; }
+    .btn.primary{ background:#111827; border-color:#111827; color:#fff; }
+    .btn.icon{ height:32px; padding:0 10px; }
+    .btn:hover{ filter:brightness(1.05); }
 
-      /* Hero & Planner */
-      .hero { text-align: center; padding: 22px 0 8px; }
-      .h1 { font-size: 32px; font-weight: 800; margin: 20px 0; }
+    .results{
+      max-width:1100px; margin:16px auto 20px; border:1px solid #e6e8ee; background:#fff; border-radius:20px;
+      box-shadow:0 8px 24px rgba(0,0,0,.06); overflow:hidden;
+    }
+    .results-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid #eef1f6; }
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    .chip{ padding:6px 10px; font-size:12px; color:#111; background:#f4f6f9; border:1px solid #e6eaf2; border-radius:999px; }
+    .muted{ color:#6b7280; font-size:13px; }
 
-      .planner-inline {
-        display: flex; align-items: center; justify-content: center; gap: 12px;
-        row-gap: 10px;
-        background: #fff; padding: 14px; border-radius: 28px;
-        border: 1px solid #e8eaf0;
-        box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
-        max-width: 1100px; margin: 0 auto; flex-wrap: wrap;
-      }
+    .map-grid{ display:grid; grid-template-columns: 2fr 1fr; gap:12px; padding:12px 16px 18px; }
+    #map{ width:100%; height:520px; border:1px solid #e6e8ee; border-radius:16px; overflow:hidden; }
 
-      .field { flex: 1 1 320px; display: grid; gap: 6px; text-align: left; }
-      .field__label { font-size: 12px; font-weight: 700; color: #6b7280; padding-left: 14px; }
+    /* Right panel: attractions + itinerary */
+    #panel{ height:520px; border:1px solid #e6e8ee; border-radius:16px; padding:12px; text-align:left; overflow:auto; }
+    .h2{ font-weight:800; margin:4px 0 10px; font-size:16px; }
+    .attraction{ border:1px solid #eceff5; border-radius:12px; padding:10px; margin:10px 0; background:#fafbff; display:grid; gap:6px; }
+    .title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .name{ font-weight:700; }
+    .rating{ font-size:12px; color:#6b7280; }
+    .desc{ font-size:13px; color:#374151; }
+    .meta{ font-size:12px; color:#6b7280; }
+    .actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .pill{ padding:3px 8px; border:1px solid #e6e8ee; background:#f9fafb; border-radius:999px; font-size:11px; color:#374151; }
 
-      .field__shell {
-        position: relative; display: flex; align-items: center; gap: 10px;
-        height: 48px; padding: 0 14px 0 42px;
-        background: #f9fafb; border: 1px solid #e6e8ee; border-radius: 16px;
-      }
+    .itinerary{ border-top:1px dashed #e6e8ee; margin-top:10px; padding-top:10px; }
+    .it-item{ border:1px solid #eef1f6; background:#fff; border-radius:10px; padding:8px; margin:8px 0; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .it-name{ font-size:13px; font-weight:600; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <div class="brand">Trippy</div>
+      <nav class="nav">
+        <a href="#">Home</a>
+        <a href="#">Trips</a>
+        <a href="#" aria-current="page">Planner</a>
+      </nav>
+    </div>
+  </header>
 
-      .field__icon { position: absolute; left: 12px; width: 18px; height: 18px; fill: #6b7280; }
-      .field__input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 14px; color: #111827; }
+  <section class="hero">
+    <div class="container">
+      <h1 class="h1" id="welcomeText">Hello, Let’s Plan Your Next Road Trip</h1>
 
-      .field__clear {
-        position: absolute; right: 8px; width: 28px; height: 28px; border: 0;
-        border-radius: 999px; background: transparent; cursor: pointer;
-        font-size: 14px; color: #9aa1ac;
-      }
-
-      .btn { height: 40px; border-radius: 12px; font-weight: 700; cursor: pointer; border: 1px solid #d9dce3; background: #fff; padding: 0 14px; }
-      .btn.primary { background: #111827; border-color: #111827; color: #fff; }
-      .btn.icon { height: 32px; padding: 0 10px; }
-
-      /* Results */
-      .results {
-        max-width: 1100px; margin: 16px auto 20px; border: 1px solid #e6e8ee;
-        background: #fff; border-radius: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-        overflow: hidden;
-      }
-
-      .results-head {
-        display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        padding: 12px 16px; border-bottom: 1px solid #eef1f6;
-      }
-
-      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-      .chip { padding: 6px 10px; font-size: 12px; color: #111; background: #f4f6f9; border: 1px solid #e6eaf2; border-radius: 999px; }
-      .muted { color: #6b7280; font-size: 13px; }
-
-      .map-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; padding: 12px 16px 18px; }
-      #map { width: 100%; height: 520px; border: 1px solid #e6e8ee; border-radius: 16px; }
-      #panel { height: 520px; border: 1px solid #e6e8ee; border-radius: 16px; padding: 12px; text-align: left; overflow: auto; }
-
-      .h2 { font-weight: 800; margin: 4px 0 10px; font-size: 16px; }
-
-      /* Attraction Cards */
-      .attraction {
-        border: 1px solid #eceff5; border-radius: 12px; padding: 10px; margin: 10px 0;
-        background: #fafbff; display: grid; gap: 6px;
-      }
-      .title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-      .name { font-weight: 700; }
-      .rating { font-size: 12px; color: #6b7280; }
-      .desc { font-size: 13px; color: #374151; }
-      .meta { font-size: 12px; color: #6b7280; }
-      .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-      .pill { padding: 3px 8px; border: 1px solid #e6e8ee; background: #f9fafb; border-radius: 999px; font-size: 11px; color: #374151; }
-
-      /* Itinerary */
-      .itinerary { border-top: 1px dashed #e6e8ee; margin-top: 10px; padding-top: 10px; }
-      .it-item {
-        border: 1px solid #eef1f6; background: #fff; border-radius: 10px; padding: 8px; margin: 8px 0;
-        display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      }
-      .it-name { font-size: 13px; font-weight: 600; }
-
-      @media (max-width: 980px) {
-        .map-grid { grid-template-columns: 1fr; }
-        #map, #panel { height: 420px; }
-      }
-          
-      /* Autocomplete (gmpx-place-autocomplete) theming so it blends into our shell */
-      gmpx-place-autocomplete.pac-overlay {
-        /* Use light look regardless of OS dark mode */
-        --gmpx-color-surface: transparent;
-        --gmpx-color-on-surface: #111827;
-        --gmpx-color-outline: transparent;
-        --gmpx-color-primary: #111827;
-        --gmpx-hover-state-layer-color: transparent;
-        --gmpx-pressed-state-layer-color: transparent;
-        --gmpx-border-radius: 12px;
-        background: transparent !important;
-        box-shadow: none !important;
-        border: 0 !important;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-      }
-      /* Hide the built-in icons/buttons—the shell already provides these */
-      gmpx-place-autocomplete.pac-overlay::part(leading-icon),
-      gmpx-place-autocomplete.pac-overlay::part(trailing-icon),
-      gmpx-place-autocomplete.pac-overlay::part(clear-button) { display: none; }
-      /* Make the inner field transparent and text styled like our input */
-      gmpx-place-autocomplete.pac-overlay::part(field) {
-        background: transparent; border: 0; box-shadow: none;
-        height: 100%; width: 100%; align-items: center;
-      }
-      gmpx-place-autocomplete.pac-overlay::part(input) {
-        background: transparent; color: #111827; font-size: 14px; padding: 0;
-      }
-      /* Keep panel (dropdown) light */
-      gmpx-place-autocomplete::part(panel) { --gmpx-color-surface: #ffffff; }
-    </style>
-  </head>
-
-  <body>
-    <!-- Header -->
-    <header class="header">
-      <div class="container header-inner">
-        <div class="brand">Trippy</div>
-      </div>
-    </header>
-
-    <!-- Hero / Planner -->
-    <section class="hero">
-      <div class="container">
-        <h1 class="h1">Hello, Let’s Plan Your Next Road Trip</h1>
-
-        <div class="planner-inline">
-          <!-- Start -->
-          <label class="field">
-            <span class="field__label">Start</span>
-            <div class="field__shell">
-              <svg class="field__icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M10 20s6-5.33 6-10a6 6 0 10-12 0c0 4.67 6 10 6 10zM10 12a2 2 0 110-4 2 2 0 010 4z"/>
-              </svg>
-              <input id="startInput" class="field__input" placeholder="Enter starting point" />
-              <button class="field__clear" data-clear="#startInput" aria-label="Clear start">✕</button>
-              <div class="field__overlay" id="startPacHost"></div>
-            </div>
-          </label>
-
-          <!-- Destination -->
-          <label class="field">
-            <span class="field__label">Destination</span>
-            <div class="field__shell">
-              <svg class="field__icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
-              </svg>
-              <input id="destInput" class="field__input" placeholder="Where to?" />
-              <button class="field__clear" data-clear="#destInput" aria-label="Clear destination">✕</button>
-              <div class="field__overlay" id="destPacHost"></div>
-            </div>
-          </label>
-
-          <button class="btn primary" id="goBtn">Go</button>
-        </div>
-
-        <!-- Results -->
-        <div class="results">
-          <div class="results-head">
-            <div class="chips" id="summaryChips"></div>
-            <span class="muted" id="statusText">Map ready</span>
+      <div class="planner-inline">
+        <!-- START -->
+        <label class="field">
+          <span class="field__label">Start</span>
+          <div class="field__shell">
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24"><path d="M10 20s6-5.33 6-10a6 6 0 10-12 0c0 4.67 6 10 6 10zM10 12a2 2 0 110-4 2 2 0 010 4z"/></svg>
+            <input id="startInput" class="field__input" placeholder="Enter starting point" autocomplete="off" />
+            <button class="field__clear" type="button" aria-label="Clear start" data-clear="#startInput">✕</button>
+            <div class="field__overlay" id="startPacHost" aria-label="Starting Location"></div>
           </div>
+        </label>
 
-          <div class="map-grid">
-            <div id="map"></div>
+        <!-- DEST -->
+        <label class="field">
+          <span class="field__label">Destination</span>
+          <div class="field__shell">
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+            <input id="destInput" class="field__input" placeholder="Where to?" autocomplete="off" />
+            <button class="field__clear" type="button" aria-label="Clear destination" data-clear="#destInput">✕</button>
+            <div class="field__overlay" id="destPacHost" aria-label="Destination"></div>
+          </div>
+        </label>
 
-            <div id="panel">
-              <div class="h2">Attractions along your route (Claude)</div>
-              <div id="attractionsList" class="muted">Enter a route to fetch ideas…</div>
+        <button class="btn primary" id="goBtn">Go</button>
+      </div>
 
-              <div class="itinerary">
-                <div class="h2">Itinerary <span id="itCount" class="pill">0 selected</span></div>
-                <div id="itineraryList"></div>
-              </div>
+      <div class="results">
+        <div class="results-head">
+          <div class="chips" id="summaryChips"></div>
+          <span class="muted" id="statusText">Map ready</span>
+        </div>
+        <div class="map-grid">
+          <div id="map" aria-label="Route map"></div>
+          <div id="panel">
+            <div class="h2">Attractions along your route</div>
+            <div id="attractionsList"></div>
+            <div class="itinerary">
+              <div class="h2">Itinerary <span id="itCount" class="pill">0 selected</span></div>
+              <div id="itineraryList"></div>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- App Script -->
-    <script>
-      const statusText = document.getElementById('statusText');
-      const listEl = document.getElementById('attractionsList');
+  <footer class="footer">
+    <div class="container" style="padding:16px; color:#6b7280;">© <span id="y"></span> Trippy</div>
+  </footer>
+
+  <script>
+    // Footer + welcome
+    document.getElementById('y').textContent = new Date().getFullYear();
+    const firstName = localStorage.getItem("firstName");
+    document.getElementById("welcomeText").textContent =
+      firstName ? `Hello ${firstName}, Let’s Plan Your Next Road Trip` : "Hello, Let’s Plan Your Next Road Trip";
+
+    const statusText = document.getElementById('statusText');
+    const listEl     = document.getElementById('attractionsList');
+    const itEl       = document.getElementById('itineraryList');
+    const itCountEl  = document.getElementById('itCount');
+
+    function renderChips({ start, dest }) {
+      const wrap = document.getElementById('summaryChips');
+      wrap.innerHTML = '';
+      const mk = (t) => { const s = document.createElement('span'); s.className='chip'; s.textContent=t; return s; };
+      wrap.append(mk(`From: ${start}`), mk(`To: ${dest}`));
+    }
+
+    // Clear buttons
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('.field__clear')) {
+        const sel = e.target.getAttribute('data-clear');
+        const input = document.querySelector(sel);
+        if (input){ input.value = ''; input.dispatchEvent(new Event('input', { bubbles:true })); input.focus(); }
+        const pac = e.target.closest('.field')?.querySelector('gmpx-place-autocomplete');
+        if (pac){ pac.value = ''; pac.valueText = ''; }
+      }
+    });
+
+    // Google Maps state
+    let map, directionsService, baseRenderer;
+    let routeOriginLatLng, routeDestLatLng;
+    let selectedAttractions = [];
+
+    // Autocomplete overlays
+    async function attachPlaceAutocomplete({ hostId, visibleInputId, placeholder }) {
+      const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
+      const host = document.getElementById(hostId);
+      const visibleInput = document.getElementById(visibleInputId);
+      // @ts-ignore
+      const pac = new PlaceAutocompleteElement();
+      pac.classList.add('pac-overlay');
+      pac.setAttribute("aria-label", placeholder);
+      try { pac.placeholder = placeholder; } catch(_) {}
+      host.appendChild(pac);
+      pac.addEventListener("input", () => { visibleInput.value = pac.value || pac.valueText || ""; });
+      pac.addEventListener("gmp-select", async ({ placePrediction }) => {
+        const place = placePrediction.toPlace();
+        await place.fetchFields({ fields: ["formattedAddress"] });
+        visibleInput.value = place.formattedAddress || (pac.value || pac.valueText || "");
+      });
+      return pac;
+    }
+
+    function stars(r){
+      if (typeof r !== 'number') return 'No rating';
+      const full = '★'.repeat(Math.floor(r));
+      const half = (r % 1 >= 0.5) ? '½' : '';
+      const empty = '☆'.repeat(5 - Math.ceil(r));
+      return `${full}${half}${empty} ${r.toFixed(1)}`;
+    }
+    function pill(text){ const s=document.createElement('span'); s.className='pill'; s.textContent=text; return s; }
+
+    function renderAttractionCard(item){
+      const { place, etaSec } = item;
+      const card = document.createElement('div');
+      card.className = 'attraction';
+
+      const titleRow = document.createElement('div'); titleRow.className = 'title-row';
+      const left = document.createElement('div');
+      left.innerHTML = `<div class="name">${place.displayName?.text || 'Attraction'}</div>
+                        <div class="rating">${stars(place.rating)}${place.userRatingCount ? ` (${place.userRatingCount})` : ''}</div>`;
+      const right = document.createElement('div');
+      const addBtn = document.createElement('button'); addBtn.className = 'btn icon'; addBtn.textContent = 'Add';
+      addBtn.addEventListener('click', () => addToItinerary(place, etaSec));
+      right.appendChild(addBtn);
+      titleRow.append(left, right);
+
+      const desc = document.createElement('div'); desc.className = 'desc';
+      const overview = place.editorialSummary?.overview || '';
+      const typeName = place.primaryTypeDisplayName?.text || '';
+      desc.textContent = overview || (typeName ? `Type: ${typeName}` : (place.formattedAddress || ''));
+
+      const meta = document.createElement('div'); meta.className = 'meta';
+      meta.textContent = `~${(etaSec/3600).toFixed(1)}h from start`;
+
+      const actions = document.createElement('div'); actions.className = 'actions';
+      if (place.googleMapsUri){ const a=document.createElement('a'); a.href=place.googleMapsUri; a.target='_blank'; a.rel='noopener'; a.textContent='View on Google Maps'; a.className='btn icon'; actions.appendChild(a); }
+      if (place.websiteUri){ const w=document.createElement('a'); w.href=place.websiteUri; w.target='_blank'; w.rel='noopener'; w.textContent='Website'; w.className='btn icon'; actions.appendChild(w); }
+
+      const tags = document.createElement('div'); tags.className = 'actions';
+      if (place.primaryTypeDisplayName?.text) tags.appendChild(pill(place.primaryTypeDisplayName.text));
+      if (place.formattedAddress) tags.appendChild(pill(place.formattedAddress));
+
+      card.append(titleRow, desc, meta, actions, tags);
+      listEl.appendChild(card);
+    }
+
+    function renderItinerary(){
       const itEl = document.getElementById('itineraryList');
-      const itCountEl = document.getElementById('itCount');
+      itEl.innerHTML = '';
+      itCountEl.textContent = `${selectedAttractions.length} selected`;
+      selectedAttractions
+        .sort((a,b)=>a.etaSec-b.etaSec)
+        .forEach((item, i)=>{
+          const div = document.createElement('div'); div.className = 'it-item';
+          const name = document.createElement('div'); name.className = 'it-name';
+          name.textContent = `${i+1}. ${item.place.displayName?.text || 'Attraction'}`;
+          const btns = document.createElement('div');
+          const rm = document.createElement('button'); rm.className='btn icon'; rm.textContent='Remove';
+          rm.addEventListener('click', ()=>{
+            selectedAttractions = selectedAttractions.filter(p => p.place.id !== item.place.id);
+            renderItinerary(); rerouteThroughItinerary();
+          });
+          btns.appendChild(rm);
+          div.append(name, btns);
+          itEl.appendChild(div);
+        });
+    }
 
-      // Clear buttons
-      document.addEventListener('click', (e) => {
-        if (e.target.matches('.field__clear')) {
-          const sel = e.target.getAttribute('data-clear');
-          const input = document.querySelector(sel);
-          if (input) {
-            input.value = '';
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.focus();
-          }
-          const pac = e.target.closest('.field')?.querySelector('gmpx-place-autocomplete');
-          if (pac) { pac.value = ''; pac.valueText = ''; }
+    async function addToItinerary(place, etaSec){
+      if (selectedAttractions.some(p => p.place.id === place.id)) return;
+      selectedAttractions.push({ place, etaSec });
+      renderItinerary();
+      await rerouteThroughItinerary();
+    }
+
+    async function rerouteThroughItinerary(){
+      if (!routeOriginLatLng || !routeDestLatLng) return;
+      const wps = selectedAttractions
+        .sort((a,b)=>a.etaSec-b.etaSec)
+        .map(p => ({ location: new google.maps.LatLng(p.place.location.latitude, p.place.location.longitude), stopover: true }));
+
+      const MAX_WAYPOINTS = 23;
+      const chunks = []; for (let i=0;i<wps.length;i+=MAX_WAYPOINTS) chunks.push(wps.slice(i,i+MAX_WAYPOINTS));
+
+      if (baseRenderer){ baseRenderer.setMap(null); }
+      baseRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false, polylineOptions:{ strokeWeight:6 } });
+
+      let origin = routeOriginLatLng, lastResult = null;
+      if (!chunks.length){
+        lastResult = await directionsService.route({
+          origin, destination: routeDestLatLng,
+          travelMode: google.maps.TravelMode.DRIVING, optimizeWaypoints:false,
+          drivingOptions:{ departureTime:new Date(), trafficModel:google.maps.TrafficModel.BEST_GUESS }
+        });
+        baseRenderer.setDirections(lastResult); return;
+      }
+      for (let i=0;i<chunks.length;i++){
+        const isLast = i===chunks.length-1;
+        const inner = chunks[i];
+        const dest  = isLast ? routeDestLatLng : inner[inner.length-1].location;
+        const innerWps = isLast ? inner : inner.slice(0,-1);
+        lastResult = await directionsService.route({
+          origin, destination: dest, waypoints: innerWps,
+          travelMode: google.maps.TravelMode.DRIVING, optimizeWaypoints:false,
+          drivingOptions:{ departureTime:new Date(), trafficModel:google.maps.TrafficModel.BEST_GUESS }
+        });
+        baseRenderer.setDirections(lastResult);
+        origin = dest;
+      }
+    }
+
+    // ---------- Helpers for fetching attractions ----------
+
+    function encodeOverviewPathToPolyline(route){
+      return google.maps.geometry.encoding.encodePath(route.overview_path || []);
+    }
+
+    // Preferred: Places Nearby along route
+    async function fetchAttractionsViaRoutePolyline(encodedPolyline, API_KEY){
+      const buffers = [4000, 8000, 12000, 20000]; // widen up to 20km
+      // Only include types that are supported by the new Places API
+      const includedTypes = [
+        "tourist_attraction","park","museum","zoo","amusement_park","art_gallery","aquarium",
+        "natural_feature","campground","rv_park"
+      ];
+      for (const buffer of buffers){
+        const payload = {
+          includedTypes,
+          maxResultCount: 500,
+          locationRestriction: { routePolyline: { encodedPolyline, buffer } }
+        };
+        const r = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": API_KEY,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.websiteUri,places.rating,places.userRatingCount,places.editorialSummary,places.primaryTypeDisplayName"
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!r.ok) continue;
+        const j = await r.json();
+        if (j?.places?.length) return j.places;
+      }
+      return [];
+    }
+
+    // Fallback: sample along the route and run Text Search
+    function buildSamples(leg){
+      const steps = leg.steps || [];
+      const samples = [];
+      let accSec = 0;
+      const TARGET_STEP_SEC = 30*60; // ~30 minutes
+      for (const s of steps){
+        const d = s.duration?.value ?? 0;
+        accSec += d;
+        // place a sample every ~30 minutes of drive time
+        if (accSec >= TARGET_STEP_SEC){
+          accSec = 0;
+          samples.push(s.end_location); // a point on the road
         }
+      }
+      // always push near destination
+      samples.push(leg.end_location);
+      return samples;
+    }
+
+    async function fetchAttractionsViaSampling(leg, API_KEY){
+      const points = buildSamples(leg);
+      const out = [];
+      for (const p of points){
+        const payload = {
+          textQuery: "tourist attractions OR museum OR park OR viewpoint OR landmark OR zoo OR aquarium OR art gallery OR amusement park",
+          includedType: "tourist_attraction",
+          maxResultCount: 20,
+          languageCode: "en",
+          locationBias: { circle: { center: { latitude: p.lat(), longitude: p.lng() }, radius: 20000 } } // 20km
+        };
+        const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": API_KEY,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.websiteUri,places.rating,places.userRatingCount,places.editorialSummary,places.primaryTypeDisplayName"
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!r.ok) continue;
+        const j = await r.json();
+        if (j?.places?.length) out.push(...j.places);
+      }
+      return out;
+    }
+
+    function dedupeById(places){
+      const seen = new Set(); const out = [];
+      for (const p of places){
+        if (seen.has(p.id)) continue;
+        seen.add(p.id); out.push(p);
+      }
+      return out;
+    }
+
+    function chunk(arr, n){ const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; }
+
+    async function computeETAsFromOrigin(originLatLng, destinationsLatLng, API_KEY){
+      const batches = chunk(destinationsLatLng, 90);
+      const all = [];
+      for (const batch of batches){
+        const payload = {
+          origins: [{ waypoint: { location: { latLng: originLatLng } } }],
+          destinations: batch.map(latLng => ({ waypoint: { location: { latLng } } })),
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_AWARE_OPTIMAL",
+          departureTime: { seconds: Math.floor(Date.now()/1000) }
+        };
+        const res = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": API_KEY },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok){ all.push(...batch.map(()=>null)); continue; }
+        const text = await res.text();
+        const rows = text.trim().split("\n").map(line => { try { return JSON.parse(line); } catch { return {}; } });
+        const secs = rows.map(r => r?.duration?.duration?.seconds ?? r?.duration?.seconds ?? null);
+        all.push(...secs);
+      }
+      return all;
+    }
+
+    // ---------- Main flow ----------
+
+    async function initMap(){
+      map = new google.maps.Map(document.getElementById("map"), { center: { lat:39.5, lng:-98.35 }, zoom:5, mapTypeControl:false });
+      directionsService = new google.maps.DirectionsService();
+      baseRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false, polylineOptions:{ strokeWeight:6 } });
+
+      await attachPlaceAutocomplete({ hostId:"startPacHost", visibleInputId:"startInput", placeholder:"Enter starting point" });
+      await attachPlaceAutocomplete({ hostId:"destPacHost",  visibleInputId:"destInput",  placeholder:"Where to?" });
+
+      ["startInput","destInput"].forEach(id=>{
+        document.getElementById(id).addEventListener("keydown", e=>{
+          if(e.key==="Enter") document.getElementById("goBtn").click();
+        });
       });
 
-      // Google Maps
-      let map, directionsService, renderer;
-      let routeOriginLatLng, routeDestLatLng;
-      let selectedAttractions = [];
+      document.getElementById('goBtn').addEventListener('click', planRouteAndAttractions);
+    }
+    window.initMap = initMap;
 
-      function renderChips({ start, dest }) {
-        const wrap = document.getElementById('summaryChips');
-        wrap.innerHTML = '';
-        const mk = (t) => { const s = document.createElement('span'); s.className = 'chip'; s.textContent = t; return s; };
-        wrap.append(mk(`From: ${start}`), mk(`To: ${dest}`));
-      }
+    async function planRouteAndAttractions(){
+      const start = document.getElementById('startInput').value.trim();
+      const dest  = document.getElementById('destInput').value.trim();
+      if (!start || !dest) { alert('Please fill Starting Location and Destination.'); return; }
 
-      async function attachPlaceAutocomplete({ hostId, visibleInputId, placeholder }) {
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
-        const host = document.getElementById(hostId);
-        const visibleInput = document.getElementById(visibleInputId);
-        // @ts-ignore
-        const pac = new PlaceAutocompleteElement();
-        pac.classList.add('pac-overlay');
-        pac.setAttribute('aria-label', placeholder);
-        pac.setAttribute('mode', 'nav'); // concise suggestions
-        // Safety: force light look via inline CSS variables too
-        pac.style.setProperty('--gmpx-color-surface', 'transparent');
-        pac.style.setProperty('--gmpx-color-on-surface', '#111827');
-        pac.style.setProperty('--gmpx-color-outline', 'transparent');
-        pac.style.setProperty('--gmpx-color-primary', '#111827');
-        try { pac.placeholder = placeholder; } catch(_) {}
-        host.appendChild(pac);
+      statusText.textContent = 'Loading route…';
+      listEl.innerHTML = '<div class="muted">Finding attractions along your route…</div>';
+      itEl.innerHTML = ''; itCountEl.textContent = '0 selected'; selectedAttractions = [];
 
-        pac.addEventListener('input', () => {
-          visibleInput.value = pac.value || pac.valueText || '';
+      try {
+        const resp = await directionsService.route({
+          origin: start,
+          destination: dest,
+          travelMode: google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: false,
+          drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS }
         });
 
-        pac.addEventListener('gmp-select', async ({ placePrediction }) => {
-          const place = placePrediction.toPlace();
-          await place.fetchFields({ fields: ['formattedAddress'] });
-          visibleInput.value = place.formattedAddress || (pac.value || pac.valueText || '');
-        });
-        return pac;
-      }
+        baseRenderer.setDirections(resp);
+        const route = resp.routes[0];
+        const leg   = route.legs[0];
+        renderChips({ start: leg.start_address, dest: leg.end_address });
+        statusText.textContent = 'Route loaded';
 
-      function starsText(n) {
-        if (typeof n !== 'number') return '—';
-        return `${'★'.repeat(Math.round(n))} ${n.toFixed(1)}`;
-      }
+        routeOriginLatLng = leg.start_location;
+        routeDestLatLng   = leg.end_location;
 
-      function renderAttractionCard(a) {
-        const card = document.createElement('div');
-        card.className = 'attraction';
-        card.innerHTML = `
-          <div class="title-row">
-            <div>
-              <div class="name">${a.name}</div>
-              <div class="rating">${starsText(a.rating)} ${a.city ? `• ${a.city}` : ''}</div>
-            </div>
-            <div><button class="btn icon">Add</button></div>
-          </div>
-          <div class="desc">${a.snippet || ''}</div>
-          <div class="actions">
-            ${a.url ? `<a class="btn icon" target="_blank" rel="noopener" href="${a.url}">More</a>` : ''}
-            ${a.category ? `<span class="pill">${a.category}</span>` : ''}
-          </div>
-        `;
-        const addBtn = card.querySelector('button');
-        addBtn.addEventListener('click', () => addToItineraryFromTextSearch(a));
-        listEl.appendChild(card);
-      }
+        const API_KEY = new URL(document.querySelector('script[src*="maps.googleapis"]').src).searchParams.get('key');
 
-      function renderItinerary() {
-        itEl.innerHTML = '';
-        itCountEl.textContent = `${selectedAttractions.length} selected`;
+        // 1) Preferred: along-route corridor
+        const encoded = encodeOverviewPathToPolyline(route);
+        let places = await fetchAttractionsViaRoutePolyline(encoded, API_KEY);
 
-        selectedAttractions.forEach((p, i) => {
-          const row = document.createElement('div');
-          row.className = 'it-item';
-
-          const name = document.createElement('div');
-          name.className = 'it-name';
-          name.textContent = `${i + 1}. ${p.name}`;
-
-          const rm = document.createElement('button');
-          rm.className = 'btn icon';
-          rm.textContent = 'Remove';
-          rm.addEventListener('click', () => {
-            selectedAttractions.splice(i, 1);
-            renderItinerary();
-            rerouteThroughItinerary();
-          });
-
-          row.append(name, rm);
-          itEl.appendChild(row);
-        });
-      }
-
-      async function addToItineraryFromTextSearch(a) {
-        // Resolve coordinates via Places Text Search, then add and route
-        try {
-          const key = new URL(document.querySelector('script[src*="maps.googleapis"]').src)
-            .searchParams.get('key');
-          const query = encodeURIComponent(`${a.name} ${a.city || ''}`.trim());
-
-          const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Goog-Api-Key': key,
-              'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.rating,places.userRatingCount,places.googleMapsUri'
-            },
-            body: JSON.stringify({ textQuery: query, maxResultCount: 1, languageCode: 'en' })
-          });
-
-          const j = await r.json();
-          const p = j?.places?.[0];
-          if (!p) { alert('Could not locate that attraction on Maps.'); return; }
-
-          selectedAttractions.push({
-            name: p.displayName?.text || a.name,
-            lat: p.location.latitude,
-            lng: p.location.longitude,
-            mapsUri: p.googleMapsUri
-          });
-
-          renderItinerary();
-          rerouteThroughItinerary();
-        } catch (e) {
-          console.error(e);
-          alert('Failed to add.');
+        // 2) Fallback: sample + text search if corridor is empty
+        if (!places.length) {
+          const sampled = await fetchAttractionsViaSampling(leg, API_KEY);
+          places = sampled;
         }
-      }
 
-      async function rerouteThroughItinerary() {
-        if (!routeOriginLatLng || !routeDestLatLng) return;
-
-        const waypoints = selectedAttractions.map((x) => ({
-          location: new google.maps.LatLng(x.lat, x.lng),
-          stopover: true,
-        }));
-
-        if (renderer) { renderer.setMap(null); }
-        renderer = new google.maps.DirectionsRenderer({
-          map,
-          suppressMarkers: false,
-          polylineOptions: { strokeWeight: 6 },
-        });
-
-        const MAX = 23; // Directions API limit per request
-        let origin = routeOriginLatLng;
-
-        if (waypoints.length === 0) {
-          const resp = await directionsService.route({
-            origin,
-            destination: routeDestLatLng,
-            travelMode: google.maps.TravelMode.DRIVING,
-            drivingOptions: {
-              departureTime: new Date(),
-              trafficModel: google.maps.TrafficModel.BEST_GUESS,
-            },
-          });
-          renderer.setDirections(resp);
+        if (!places.length){
+          listEl.innerHTML = '<div class="muted">No attractions found along this route.</div>';
           return;
         }
 
-        for (let i = 0; i < waypoints.length; i += MAX) {
-          const chunk = waypoints.slice(i, i + MAX);
-          const last = i + MAX >= waypoints.length;
-          const dest = last ? routeDestLatLng : chunk[chunk.length - 1].location;
-          const inner = last ? chunk : chunk.slice(0, -1);
+        // Dedupe & sort by ETA from start
+        places = dedupeById(places);
+        const originLatLng = { latitude: leg.start_location.lat(), longitude: leg.start_location.lng() };
+        const destLatLngs  = places.map(p => ({ latitude: p.location.latitude, longitude: p.location.longitude }));
+        const etas         = await computeETAsFromOrigin(originLatLng, destLatLngs, API_KEY);
 
-          const resp = await directionsService.route({
-            origin,
-            destination: dest,
-            waypoints: inner,
-            travelMode: google.maps.TravelMode.DRIVING,
-            drivingOptions: {
-              departureTime: new Date(),
-              trafficModel: google.maps.TrafficModel.BEST_GUESS,
-            },
-          });
-          renderer.setDirections(resp);
-          origin = dest;
-        }
+        const entries = places
+          .map((p,i)=>({ place:p, etaSec: etas[i] }))
+          .filter(e=>e.etaSec!=null)
+          .sort((a,b)=>a.etaSec-b.etaSec);
+
+        const MAX_SHOW = 40;
+        listEl.innerHTML = '';
+        entries.slice(0, MAX_SHOW).forEach(e=>renderAttractionCard(e));
+      } catch (err) {
+        console.error(err);
+        statusText.textContent = 'Directions request failed';
+        listEl.innerHTML = '<div class="muted">Could not load route. Please check inputs and API key (Maps, Places, Routes).</div>';
       }
+    }
+  </script>
 
-      function encodeOverviewPathToPolyline(route) {
-        return google.maps.geometry.encoding.encodePath(route.overview_path || []);
-      }
-
-      // Build a compact route context for Claude (cities + states + rough distances)
-      function buildClaudeContext(leg, route) {
-        const totalMiles = (route.legs?.reduce((d, L) => d + (L.distance?.value || 0), 0) || 0) / 1609.344;
-        const totalHrs = (route.legs?.reduce((d, L) => d + (L.duration?.value || 0), 0) || 0) / 3600;
-
-        const steps = leg.steps || [];
-        const towns = [];
-        for (let i = 0; i < steps.length; i += Math.max(1, Math.floor(steps.length / 20))) {
-          const addr = steps[i].end_address;
-          if (addr) towns.push(addr.split(',').slice(-2).join(',').trim());
-        }
-
-        // dedupe & clean
-        const uniq = [...new Set(towns.filter(Boolean))].slice(0, 25);
-        return {
-          origin: leg.start_address,
-          destination: leg.end_address,
-          totalMiles: Math.round(totalMiles),
-          totalHours: Math.round(totalHrs * 10) / 10,
-          corridorPlaces: uniq,
-        };
-      }
-
-      async function planRoute() {
-        const start = document.getElementById('startInput').value.trim();
-        const dest = document.getElementById('destInput').value.trim();
-        if (!start || !dest) { alert('Please fill Starting Location and Destination.'); return; }
-
-        statusText.textContent = 'Loading route…';
-        listEl.textContent = 'Asking Claude for ideas…';
-        itEl.innerHTML = '';
-        itCountEl.textContent = '0 selected';
-        selectedAttractions = [];
-
-        try {
-          const resp = await directionsService.route({
-            origin: start,
-            destination: dest,
-            travelMode: google.maps.TravelMode.DRIVING,
-            provideRouteAlternatives: false,
-            drivingOptions: {
-              departureTime: new Date(),
-              trafficModel: google.maps.TrafficModel.BEST_GUESS,
-            },
-          });
-
-          renderer.setDirections(resp);
-          const route = resp.routes[0];
-          const leg = route.legs[0];
-
-          routeOriginLatLng = leg.start_location;
-          routeDestLatLng = leg.end_location;
-
-          renderChips({ start: leg.start_address, dest: leg.end_address });
-          statusText.textContent = 'Route loaded';
-
-          // Build Claude prompt payload & ask your backend
-          const context = buildClaudeContext(leg, route);
-          const r = await fetch('/api/claude-attractions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ context, max_results: 40 }),
-          });
-
-          if (!r.ok) { throw new Error('Claude endpoint error'); }
-          const json = await r.json();
-          const items = Array.isArray(json?.attractions) ? json.attractions : [];
-
-          if (!items.length) {
-            listEl.innerHTML = '<div class="muted">No suggestions came back. Try another route or widen your prompt logic.</div>';
-            return;
-          }
-
-          listEl.innerHTML = '';
-          items.forEach(renderAttractionCard);
-        } catch (e) {
-          console.error(e);
-          statusText.textContent = 'Failed to plan route';
-          listEl.innerHTML = '<div class="muted">Could not load route or suggestions. Check API keys & server.</div>';
-        }
-      }
-
-      async function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-          center: { lat: 39.5, lng: -98.35 },
-          zoom: 5,
-          mapTypeControl: false,
-        });
-
-        directionsService = new google.maps.DirectionsService();
-        renderer = new google.maps.DirectionsRenderer({
-          map,
-          suppressMarkers: false,
-          polylineOptions: { strokeWeight: 6 },
-        });
-
-        await attachPlaceAutocomplete({ hostId: 'startPacHost', visibleInputId: 'startInput', placeholder: 'Enter starting point' });
-        await attachPlaceAutocomplete({ hostId: 'destPacHost', visibleInputId: 'destInput', placeholder: 'Where to?' });
-
-        document.getElementById('goBtn').addEventListener('click', planRoute);
-        ['startInput', 'destInput'].forEach((id) => {
-          document.getElementById(id).addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') document.getElementById('goBtn').click();
-          });
-        });
-      }
-
-      window.initMap = initMap;
-    </script>
-
-    <!-- Google Maps JS API -->
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCr1WhJtX6cLLu6UCMUVGiKm4mnmuGD6E8&libraries=places,geometry&callback=initMap"
-      async defer
-    ></script>
-  </body>
+  <!-- Google Maps JS API (include geometry for encoding) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCr1WhJtX6cLLu6UCMUVGiKm4mnmuGD6E8&libraries=places,geometry&callback=initMap" async defer></script>
+</body>
 </html>

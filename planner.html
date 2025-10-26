@@ -3,276 +3,374 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Trippy — Route Planner with Attractions</title>
-
+  <title>Trippy — Planner (clean UI)</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f3f4f6; color:#111827; }
-    .container { max-width: 1100px; margin: auto; padding: 16px; }
-    .planner-inline { display: flex; gap: 10px; background: #fff; padding: 14px; border-radius: 20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); }
-    input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 10px; }
-    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #d9dce3; background:#fff; cursor: pointer; font-weight: bold; }
-    button.primary { background: #111; color: #fff; border-color:#111; }
-    .grid { display:grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top:16px; }
-    #map { width: 100%; height: 500px; border-radius: 20px; overflow:hidden; }
-    #panel { background: #fff; padding: 14px; border-radius: 20px; height: 500px; overflow-y: auto; border:1px solid #e6e8ee; }
-    h1 { margin: 0 0 12px; font-size: 24px; }
-    h3 { margin: 8px 0; }
-    .muted { color:#6b7280; }
-    .attraction { border: 1px solid #e6e8ee; padding: 10px; border-radius: 12px; margin-top: 10px; background:#fafbff; }
-    .title-row { display: flex; justify-content: space-between; align-items:center; gap:10px; }
-    .itinerary { margin-top: 10px; }
+    :root { color-scheme: light; }
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f3f4f6;color:#111827}
+    .container{max-width:1100px;margin:0 auto;padding:0 16px}
 
-    /* ▼ NEW: bottom itinerary box */
-    .itinerary-bar {
-      margin-top: 16px;
-      background:#fff;
-      border:1px solid #e6e8ee;
-      border-radius:16px;
-      box-shadow:0 4px 12px rgba(0,0,0,.06);
-      padding:12px;
+    /* Header */
+    .header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.9);backdrop-filter:saturate(160%) blur(8px);border-bottom:1px solid #e6e8ee}
+    .header-inner{height:56px;display:flex;align-items:center;justify-content:space-between}
+    .brand{font-weight:800;letter-spacing:.2px}
+    .brand .dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:#111827;margin-right:8px}
+    .nav a{color:#111827;text-decoration:none;margin-left:14px}
+
+    /* Hero */
+    .hero{text-align:center;padding:24px 0 8px}
+    .h1{font-size:36px;font-weight:800;margin:18px 0 22px}
+
+    /* Planner pill bar — tighter spacing */
+    .planner-inline{
+      display:flex; align-items:end; justify-content:center;
+      gap:10px;               /* tighter */
+      background:#fff; border:1px solid #e8eaf0; border-radius:24px;
+      padding:10px 12px;      /* tighter */
+      box-shadow:0 8px 24px rgba(17,24,39,.06);
+      max-width:1100px; margin:0 auto;
     }
-    .itinerary-bar__head {
-      display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;
+    /* fields */
+    .field{flex:1 1 340px; display:grid; gap:4px; text-align:left; min-width:0}
+    .field__label{font-size:12px;font-weight:700;letter-spacing:.02em;color:#6b7280;padding-left:12px}
+    .field__shell{
+      position:relative; display:flex; align-items:center; gap:10px;
+      height:46px; padding:0 12px 0 40px; background:#f9fafb;
+      border:1px solid #e6e8ee; border-radius:14px;
+      transition:border-color .2s, background .2s, box-shadow .2s;
     }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #e6e8ee; background:#f9fafb; color:#374151; font-size:12px; }
-    .itinerary-bar__list { display:grid; gap:8px; }
-    .itinerary-bar__row {
-      display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px;
-      border:1px solid #eef1f6; border-radius:10px; background:#fff;
+    .field__shell:hover{ background:#fff; }
+    .field__shell:focus-within{ background:#fff; border-color:#9db4ff; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+    .field__icon{ position:absolute; left:10px; width:18px; height:18px; fill:#6b7280; }
+    .field__input{
+      width:100%; border:0; outline:0; background:transparent;
+      font-size:14px; color:#111827; min-width:0;
     }
-    .nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .field__clear{
+      position:absolute; right:6px; width:28px; height:28px; border:0; border-radius:999px;
+      background:transparent; cursor:pointer; font-size:14px; line-height:1; color:#9aa1ac;
+    }
+    .field__clear:hover{ background:#f3f4f6; color:#6b7280; }
+    .field__overlay{ position:absolute; inset:0; border-radius:14px; z-index:2; }
+
+    /* Autocomplete overlay (transparent; no built-in icons) */
+    gmpx-place-autocomplete.pac-overlay{ position:absolute; inset:0; z-index:3; }
+    gmpx-place-autocomplete.pac-overlay::part(container),
+    gmpx-place-autocomplete.pac-overlay::part(input){
+      background:transparent !important; border:none !important; box-shadow:none !important; height:100%;
+    }
+    gmpx-place-autocomplete.pac-overlay::part(leading-icon),
+    gmpx-place-autocomplete.pac-overlay::part(trailing-icon){ display:none !important; }
+    gmpx-place-autocomplete.pac-overlay::part(panel){
+      border:1px solid #e6e8ee; border-radius:12px; background:#fff;
+      box-shadow:0 12px 32px rgba(0,0,0,.10); margin-top:8px;
+    }
+
+    /* Gas mini */
+    .mini{flex:0 0 120px; display:grid; gap:4px; text-align:left}
+    .mini__label{font-size:12px;font-weight:700;color:#6b7280;padding-left:10px}
+    .mini input{
+      height:46px; width:100%; background:#f9fafb; border:1px solid #e6e8ee;
+      border-radius:14px; padding:0 10px; font-size:14px; outline:0;
+    }
+    .mini input:hover{ background:#fff; }
+    .mini input:focus{ background:#fff; border-color:#9db4ff; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+
+    .btn{height:46px;border-radius:14px;font-weight:700;cursor:pointer}
+    .btn.primary{background:#111827;color:#fff;padding:0 18px}
+    .btn.primary:hover{filter:brightness(1.05)}
+    .btn.ghost{background:#fff;border:1px solid #d5d8de;padding:0 14px}
+
+    /* Filters */
+    .filter-wrap{position:relative}
+    .filter-menu{display:none;position:absolute;top:52px;right:0;z-index:30;width:240px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);text-align:left}
+    .filter-menu.open{display:block}
+    .menu-head{font-weight:700;font-size:14px;margin:4px 0 8px}
+    .menu-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:6px;cursor:pointer;user-select:none}
+    .menu-row:hover{background:#f6f7f9}
+    .menu-sep{height:1px;background:#eee;margin:8px 0}
+
+    /* Results */
+    .results{max-width:1100px;margin:16px auto 0;border:1px solid #e6e8ee;background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,.06);overflow:hidden;display:grid;grid-template-rows:1fr;padding:16px 20px 20px}
+    .results-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{padding:6px 10px;font-size:12px;color:#111;background:#f4f6f9;border:1px solid #e6eaf2;border-radius:999px}
+    .muted{color:#6b7280;font-size:13px}
+
+    .map-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:12px}
+    #map{width:100%;height:460px;border:1px solid #e6e8ee;border-radius:16px;overflow:hidden}
+
+    .side-panel{display:grid;grid-template-rows:auto auto 1fr;gap:10px}
+    .card{border:1px solid #e6e8ee;border-radius:16px;padding:12px}
+    .summary{font-weight:600;margin-bottom:8px;text-align:left}
+    .title-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .attraction,.stop{border:1px solid #eef1f6;padding:10px;border-radius:12px;margin-top:10px;background:#fafbff}
+
+    @media (max-width:980px){.planner-inline{flex-wrap:wrap;padding:10px}.field{flex-basis:100%}.mini{flex-basis:calc(50% - 5px)}.map-grid{grid-template-columns:1fr}#map{height:380px}}
+    @media (max-width:520px){.mini{flex-basis:100%}}
   </style>
 </head>
-
 <body>
-  <div class="container">
-    <h1>Plan Your Road Trip</h1>
-    <div class="planner-inline">
-      <input id="startInput" placeholder="Starting point" />
-      <input id="destInput" placeholder="Destination" />
-      <button id="goBtn" class="primary">Go</button>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="index.html" style="text-decoration:none;color:inherit;cursor:default;">
+        <div class="brand"><span class="dot"></span> Trippy</div>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="planner.html">Trips</a>
+        <a href="planner.html">Profile</a>
+      </nav>
     </div>
+  </header>
 
-    <div class="grid">
-      <div id="map"></div>
-      <div id="panel">
-        <h3>Attractions</h3>
-        <div id="attractionsList" class="muted">Enter a route...</div>
-        <h3>Itinerary</h3>
-        <div id="itineraryList"></div>
-      </div>
-    </div>
+  <section class="hero">
+    <div class="container">
+      <h1 class="h1" id="welcomeText">Hello, Let’s Plan Your Next Road Trip</h1>
 
-    <!-- ▼ NEW: bottom itinerary control box -->
-    <div class="itinerary-bar" id="itineraryBar" aria-live="polite">
-      <div class="itinerary-bar__head">
-        <div>
-          <strong>Selected Stops</strong>
-          <span class="pill" id="itCountBottom">0 selected</span>
+      <!-- Top bar -->
+      <div class="planner-inline">
+        <!-- Start -->
+        <label class="field">
+          <span class="field__label">Start</span>
+          <div class="field__shell">
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24"><path d="M10 20s6-5.33 6-10a6 6 0 10-12 0c0 4.67 6 10 6 10zM10 12a2 2 0 110-4 2 2 0 010 4z"/></svg>
+            <input id="startInput" class="field__input" placeholder="Enter starting point" autocomplete="off" />
+            <button class="field__clear" type="button" aria-label="Clear start" data-clear="#startInput">✕</button>
+            <div class="field__overlay" id="startPacHost" aria-label="Starting Location"></div>
+          </div>
+        </label>
+
+        <!-- Destination -->
+        <label class="field">
+          <span class="field__label">Destination</span>
+          <div class="field__shell">
+            <svg aria-hidden="true" class="field__icon" viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+            <input id="destInput" class="field__input" placeholder="Where to?" autocomplete="off" />
+            <button class="field__clear" type="button" aria-label="Clear destination" data-clear="#destInput">✕</button>
+            <div class="field__overlay" id="destPacHost" aria-label="Destination"></div>
+          </div>
+        </label>
+
+        <!-- Gas -->
+        <label class="mini" title="Estimated gas budget">
+          <span class="mini__label">Gas</span>
+          <input id="gasInput" type="number" min="0" step="1" inputmode="numeric" />
+        </label>
+
+        <!-- Filters -->
+        <div class="filter-wrap">
+          <button class="btn ghost" id="filterBtn" aria-haspopup="true" aria-expanded="false">Filters</button>
+          <div class="filter-menu" id="filterMenu" role="menu" aria-label="Filters">
+            <div class="menu-head">Show</div>
+            <label class="menu-row"><input type="checkbox" class="f-type" value="Attractions" checked /> Attractions</label>
+            <div class="menu-sep"></div>
+            <div class="menu-head">Max off-route distance</div>
+            <label class="menu-row"><input type="radio" name="dist" value="≤ 3 km" checked /> ≤ 3 km</label>
+            <label class="menu-row"><input type="radio" name="dist" value="≤ 5 km" /> ≤ 5 km</label>
+            <label class="menu-row"><input type="radio" name="dist" value="≤ 10 km" /> ≤ 10 km</label>
+          </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button id="clearAllBtn">Reset all</button>
-        </div>
+
+        <button class="btn primary" id="goBtn">Go</button>
       </div>
-      <div class="itinerary-bar__list" id="itineraryBarList">
-        <div class="muted">No stops yet — add some from the “Attractions” list.</div>
+
+      <!-- Results -->
+      <div class="results">
+        <div class="results-head">
+          <div class="chips" id="summaryChips"></div>
+          <span class="muted" id="statusText">Map ready</span>
+        </div>
+
+        <div class="map-grid">
+          <div id="map" aria-label="Route map"></div>
+
+          <!-- Right rail: Attractions + Selected Stops -->
+          <aside class="side-panel">
+            <div id="attractionsCard" class="card">
+              <div class="summary">Attractions</div>
+              <div id="attractionsList" class="muted">No route yet.</div>
+            </div>
+
+            <div id="itineraryCard" class="card">
+              <div class="summary" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span>Selected Stops</span>
+                <span class="chip" id="itCount">0 selected</span>
+              </div>
+              <div id="itineraryList" class="muted">No stops yet — add some above.</div>
+              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+                <button class="btn ghost" id="clearAllBtn">Reset all</button>
+              </div>
+            </div>
+
+            <!-- spacer for stretch -->
+            <div style="height:1px;"></div>
+          </aside>
+        </div>
       </div>
     </div>
-    <!-- ▲ NEW -->
-  </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">© <span id="y"></span> Trippy</div>
+  </footer>
 
   <script>
-    let map, directionsService, renderer;
-    let routeOrigin, routeDest;
+    // Footer + greeting
+    document.getElementById('y').textContent = new Date().getFullYear();
+    const firstName = localStorage.getItem('firstName') || localStorage.getItem('FirstName');
+    document.getElementById('welcomeText').textContent =
+      firstName ? `Hello ${firstName}, Let’s Plan Your Next Road Trip` : `Hello, Let’s Plan Your Next Road Trip`;
 
-    // Core state
-    let selectedStops = [];             // [{ name, lat, lng }]
-    const selectedKeys = new Set();     // prevent duplicates
+    // Filters dropdown
+    const filterBtn  = document.getElementById('filterBtn');
+    const filterMenu = document.getElementById('filterMenu');
+    function toggleMenu(open){ const willOpen = open ?? !filterMenu.classList.contains('open'); filterMenu.classList.toggle('open', willOpen); filterBtn.setAttribute('aria-expanded', String(willOpen)); }
+    filterBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleMenu(); });
+    document.addEventListener('click', (e)=>{ if(!filterMenu.contains(e.target) && e.target!==filterBtn) toggleMenu(false); });
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') toggleMenu(false); });
 
-    function makeKey(name, lat, lng){
-      return `${(name||'').toLowerCase().trim()}|${(+lat).toFixed(5)},${(+lng).toFixed(5)}`;
+    // Chips (removed breaks & suggested)
+    function renderChips({ start, dest, gas, dist }){
+      const wrap = document.getElementById('summaryChips');
+      wrap.innerHTML='';
+      const mk = (t)=>{ const s=document.createElement('span'); s.className='chip'; s.textContent=t; return s; };
+      wrap.append(mk(`From: ${start}`), mk(`To: ${dest}`), mk(`Gas: ${gas}`), mk(`Off-route: ${dist}`));
     }
 
-    function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: {lat: 39.5, lng: -98.35},
-        zoom: 4
+    // Map & Directions
+    let map, directionsService, directionsRenderer, routeOrigin, routeDest;
+
+    async function attachPlaceAutocomplete({ hostId, visibleInputId, placeholder }){
+      const { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
+      const host = document.getElementById(hostId);
+      const native = document.getElementById(visibleInputId);
+
+      // @ts-ignore
+      const pac = new PlaceAutocompleteElement();
+      pac.classList.add('pac-overlay'); pac.setAttribute('aria-label', placeholder);
+      try{ pac.placeholder = placeholder; }catch{}
+      host.appendChild(pac);
+
+      // Keep overlay & native in sync both ways (so typing feels natural)
+      pac.addEventListener('input', ()=>{ native.value = pac.value || pac.valueText || ''; });
+      native.addEventListener('input', ()=>{ try{ pac.value = native.value; pac.valueText = native.value; }catch{}; });
+      pac.addEventListener('gmp-select', async ({ placePrediction })=>{
+        const place = placePrediction.toPlace();
+        await place.fetchFields({ fields:['formattedAddress'] });
+        native.value = place.formattedAddress || pac.value || pac.valueText || '';
       });
+
+      // Enter-to-Go from either
+      const go = () => document.getElementById('goBtn').click();
+      native.addEventListener('keydown', e=>{ if(e.key==='Enter') go(); });
+      pac.addEventListener('keydown', e=>{ if(e.key==='Enter') go(); });
+
+      return pac;
+    }
+
+    async function initMap(){
+      map = new google.maps.Map(document.getElementById('map'), { center:{lat:39.5,lng:-98.35}, zoom:5, mapTypeControl:false });
       directionsService = new google.maps.DirectionsService();
-      renderer = new google.maps.DirectionsRenderer({ map: map });
+      directionsRenderer = new google.maps.DirectionsRenderer({ map, polylineOptions:{ strokeWeight:6 } });
 
-      document.getElementById("goBtn").addEventListener("click", planRoute);
+      await attachPlaceAutocomplete({ hostId:'startPacHost', visibleInputId:'startInput', placeholder:'Enter starting point' });
+      await attachPlaceAutocomplete({ hostId:'destPacHost',  visibleInputId:'destInput',  placeholder:'Where to?' });
 
-      // NEW: Reset-all button
-      document.getElementById("clearAllBtn").addEventListener("click", clearAllStops);
-    }
-
-    async function planRoute() {
-      const start = document.getElementById('startInput').value.trim();
-      const dest = document.getElementById('destInput').value.trim();
-      if (!start || !dest) { alert("Enter both start and destination"); return; }
-
-      const route = await directionsService.route({
-        origin: start,
-        destination: dest,
-        travelMode: 'DRIVING'
+      // Clear buttons
+      document.querySelectorAll('.field__clear').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const sel=btn.getAttribute('data-clear'); const input=document.querySelector(sel); if(input){ input.value=''; }
+          const wrap=btn.closest('.field__shell'); const pac=wrap?.querySelector('gmpx-place-autocomplete'); if(pac){ pac.value=''; pac.valueText=''; }
+        });
       });
-      renderer.setDirections(route);
+    }
+    window.initMap = initMap;
 
-      const leg = route.routes[0].legs[0];
-      routeOrigin = leg.start_location;
-      routeDest = leg.end_location;
-
-      fetchAttractions(leg.start_address, leg.end_address);
+    // Route
+    async function renderRoute(origin, destination){
+      const status = document.getElementById('statusText');
+      status.textContent = 'Loading route…';
+      try{
+        const res = await directionsService.route({ origin, destination, travelMode: google.maps.TravelMode.DRIVING });
+        directionsRenderer.setDirections(res);
+        const leg = res.routes[0].legs[0];
+        routeOrigin = leg.start_location; routeDest = leg.end_location;
+        status.textContent = 'Route loaded';
+        // Fetch attractions (hook your backend here)
+        fetchAttractions(leg.start_address, leg.end_address);
+      }catch(err){
+        console.error(err);
+        status.textContent = 'Directions request failed';
+      }
     }
 
-    async function fetchAttractions(origin, destination) {
+    // Selected stops
+    let selectedStops = []; const selectedKeys = new Set();
+    function keyOf(n,lat,lng){ return `${(n||'').toLowerCase().trim()}|${(+lat).toFixed(5)},${(+lng).toFixed(5)}`; }
+    function paintItinerary(){
+      const list = document.getElementById('itineraryList');
+      const count = document.getElementById('itCount');
+      list.innerHTML=''; count.textContent = `${selectedStops.length} selected`;
+      if(!selectedStops.length){ list.innerHTML = '<div class="muted">No stops yet — add some above.</div>'; return; }
+      selectedStops.forEach((s,i)=>{
+        const row=document.createElement('div'); row.className='attraction';
+        row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center'; row.style.gap='10px';
+        const name=document.createElement('div'); name.textContent = `${i+1}. ${s.name}`;
+        const rm=document.createElement('button'); rm.className='btn ghost'; rm.style.height='34px'; rm.textContent='Remove';
+        rm.addEventListener('click',()=>{ selectedKeys.delete(keyOf(s.name,s.lat,s.lng)); selectedStops.splice(i,1); paintItinerary(); rerouteWithStops(); });
+        row.append(name,rm); list.appendChild(row);
+      });
+    }
+    function addToItinerary(lat,lng,name){
+      const k=keyOf(name,lat,lng); if(selectedKeys.has(k)) return;
+      selectedKeys.add(k); selectedStops.push({lat,lng,name}); paintItinerary(); rerouteWithStops();
+    }
+    function rerouteWithStops(){
+      if(!routeOrigin || !routeDest) return;
+      const waypoints = selectedStops.map(s=>({ location:new google.maps.LatLng(s.lat,s.lng), stopover:true }));
+      directionsService.route({ origin:routeOrigin, destination:routeDest, waypoints, travelMode:'DRIVING' }, (resp, status)=>{ if(status==='OK') directionsRenderer.setDirections(resp); });
+    }
+    document.getElementById('clearAllBtn').addEventListener('click',()=>{ selectedStops=[]; selectedKeys.clear(); paintItinerary(); rerouteWithStops(); });
+
+    // Attractions (replace the fetch with your backend when ready)
+    async function fetchAttractions(origin, destination){
       const list = document.getElementById('attractionsList');
-      list.innerHTML = "Loading attractions...";
-
-      try {
-        const res = await fetch("http://localhost:5001/api/attractions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ origin, destination })
+      list.innerHTML = 'Loading attractions...';
+      try{
+        // Example placeholder data (swap for your API)
+        const demo = [
+          { name:'Scenic Viewpoint', rating:4.6, distanceFromRouteKm:2.1, lat:36.112, lng:-112.113 },
+          { name:'National Park Museum', rating:4.8, distanceFromRouteKm:4.3, lat:36.222, lng:-112.221 },
+        ];
+        await new Promise(r=>setTimeout(r,300)); // pretend load
+        list.innerHTML='';
+        demo.forEach(a=>{
+          const div=document.createElement('div'); div.className='attraction';
+          const header=document.createElement('div'); header.className='title-row';
+          const name=document.createElement('strong'); name.textContent=a.name;
+          const btn=document.createElement('button'); btn.className='btn ghost'; btn.style.height='34px'; btn.textContent='Add';
+          btn.addEventListener('click',()=>addToItinerary(a.lat,a.lng,a.name));
+          header.append(name,btn);
+          const meta=document.createElement('div'); meta.className='muted'; meta.textContent=`⭐ ${a.rating} • ${a.distanceFromRouteKm} km off route`;
+          div.append(header,meta); list.appendChild(div);
         });
-
-        if (!res.ok) {
-          const t = await res.text();
-          list.innerHTML = "Failed to load attractions.";
-          console.error("Backend error:", t);
-          return;
-        }
-
-        const data = await res.json();
-
-        if (!data.attractions || data.attractions.length === 0) {
-          list.innerHTML = "No attractions found.";
-          return;
-        }
-
-        list.innerHTML = "";
-        data.attractions.forEach((a) => {
-          const div = document.createElement('div');
-          div.className = "attraction";
-
-          const btn = document.createElement('button');
-          btn.textContent = 'Add';
-          btn.addEventListener('click', () => addToItinerary(a.lat, a.lng, a.name));
-
-          const top = document.createElement('div');
-          top.className = 'title-row';
-          const nameEl = document.createElement('strong');
-          nameEl.textContent = a.name;
-
-          top.appendChild(nameEl);
-          top.appendChild(btn);
-
-          const meta = document.createElement('div');
-          meta.textContent = `⭐ ${a.rating ?? "N/A"} • ${a.distanceFromRouteKm}km off route`;
-
-          div.append(top, meta);
-          list.appendChild(div);
-        });
-      } catch (e) {
-        console.error(e);
-        list.innerHTML = "Could not reach backend.";
-      }
+      }catch(e){ console.error(e); list.textContent='Could not load attractions.'; }
     }
 
-    // ▼ Updated: now prevents duplicates and updates both the panel and the new box
-    function addToItinerary(lat, lng, name) {
-      const key = makeKey(name, lat, lng);
-      if (selectedKeys.has(key)) {
-        // Already added — do nothing
-        return;
-      }
-      selectedKeys.add(key);
-      selectedStops.push({ lat, lng, name });
-
-      renderPanelItinerary();
-      renderBottomItinerary();
-      rerouteWithStops();
-    }
-
-    // NEW: remove a single stop by index
-    function removeStop(index){
-      const item = selectedStops[index];
-      if (!item) return;
-      const key = makeKey(item.name, item.lat, item.lng);
-      selectedKeys.delete(key);
-      selectedStops.splice(index, 1);
-
-      renderPanelItinerary();
-      renderBottomItinerary();
-      rerouteWithStops();
-    }
-
-    // NEW: reset all
-    function clearAllStops(){
-      selectedStops = [];
-      selectedKeys.clear();
-      renderPanelItinerary();
-      renderBottomItinerary();
-      rerouteWithStops();
-    }
-
-    // Rebuild the right-panel itinerary (keeps original minimal look)
-    function renderPanelItinerary(){
-      const itList = document.getElementById('itineraryList');
-      itList.innerHTML = "";
-      selectedStops.forEach((s) => {
-        const item = document.createElement('div');
-        item.textContent = s.name; // same simple look as before
-        itList.appendChild(item);
-      });
-    }
-
-    // Build the bottom box with remove buttons + count
-    function renderBottomItinerary(){
-      const countEl = document.getElementById('itCountBottom');
-      const listEl  = document.getElementById('itineraryBarList');
-
-      countEl.textContent = `${selectedStops.length} selected`;
-
-      if (selectedStops.length === 0){
-        listEl.innerHTML = '<div class="muted">No stops yet — add some from the “Attractions” list.</div>';
-        return;
-      }
-
-      listEl.innerHTML = "";
-      selectedStops.forEach((s, i) => {
-        const row = document.createElement('div');
-        row.className = "itinerary-bar__row";
-
-        const left = document.createElement('div');
-        left.className = "nowrap";
-        left.textContent = `${i+1}. ${s.name}`;
-
-        const rm = document.createElement('button');
-        rm.textContent = "Remove";
-        rm.addEventListener('click', () => removeStop(i));
-
-        row.append(left, rm);
-        listEl.appendChild(row);
-      });
-    }
-
-    function rerouteWithStops() {
-      if (!routeOrigin || !routeDest) return;
-      const waypoints = selectedStops.map(s => ({
-        location: new google.maps.LatLng(s.lat, s.lng), stopover: true
-      }));
-      directionsService.route({
-        origin: routeOrigin,
-        destination: routeDest,
-        waypoints: waypoints,
-        travelMode: 'DRIVING'
-      }, (resp) => renderer.setDirections(resp));
-    }
+    // Go
+    document.getElementById('goBtn').addEventListener('click',()=>{
+      const start = document.querySelector('#startPacHost gmpx-place-autocomplete')?.valueText || document.getElementById('startInput').value.trim();
+      const dest  = document.querySelector('#destPacHost gmpx-place-autocomplete')?.valueText  || document.getElementById('destInput').value.trim();
+      const gas   = document.getElementById('gasInput').value.trim();
+      if(!start || !dest || gas===''){ alert('Please fill Starting Location, Destination, and Gas.'); return; }
+      const dist  = (document.querySelector('input[name="dist"]:checked')?.value) || '≤ 3 km';
+      renderChips({ start, dest, gas, dist });
+      renderRoute(start, dest);
+      toggleMenu(false);
+    });
   </script>
 
-  <!-- Use your browser-safe Maps JS key here -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_BROWSER_API_KEY&callback=initMap" async defer></script>
+  <!-- Google Maps (swap YOUR_KEY_HERE) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_KEY_HERE&v=weekly&libraries=places,geometry&callback=initMap" async defer></script>
 </body>
 </html>

@@ -172,11 +172,15 @@
     const itEl       = document.getElementById('itineraryList');
     const itCountEl  = document.getElementById('itCount');
 
-    function renderChips({ start, dest }) {
+    function setStatus(msg){ statusText.textContent = msg; }
+
+    function renderChips({ start, dest, distText, durText }) {
       const wrap = document.getElementById('summaryChips');
       wrap.innerHTML = '';
       const mk = (t) => { const s = document.createElement('span'); s.className='chip'; s.textContent=t; return s; };
       wrap.append(mk(`From: ${start}`), mk(`To: ${dest}`));
+      if (distText) wrap.append(mk(`Distance: ${distText}`));
+      if (durText)  wrap.append(mk(`Drive: ${durText}`));
     }
 
     // Clear buttons
@@ -195,26 +199,7 @@
     let routeOriginLatLng, routeDestLatLng;
     let selectedAttractions = [];
 
-    // Autocomplete overlays
-    async function attachPlaceAutocomplete({ hostId, visibleInputId, placeholder }) {
-      const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
-      const host = document.getElementById(hostId);
-      const visibleInput = document.getElementById(visibleInputId);
-      // @ts-ignore
-      const pac = new PlaceAutocompleteElement();
-      pac.classList.add('pac-overlay');
-      pac.setAttribute("aria-label", placeholder);
-      try { pac.placeholder = placeholder; } catch(_) {}
-      host.appendChild(pac);
-      pac.addEventListener("input", () => { visibleInput.value = pac.value || pac.valueText || ""; });
-      pac.addEventListener("gmp-select", async ({ placePrediction }) => {
-        const place = placePrediction.toPlace();
-        await place.fetchFields({ fields: ["formattedAddress"] });
-        visibleInput.value = place.formattedAddress || (pac.value || pac.valueText || "");
-      });
-      return pac;
-    }
-
+    // ---------- Helpers ----------
     function stars(r){
       if (typeof r !== 'number') return 'No rating';
       const full = '★'.repeat(Math.floor(r));
@@ -223,7 +208,97 @@
       return `${full}${half}${empty} ${r.toFixed(1)}`;
     }
     function pill(text){ const s=document.createElement('span'); s.className='pill'; s.textContent=text; return s; }
+    function chunk(arr, n){ const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; }
+    function dedupeById(places){
+      const seen = new Set(); const out = [];
+      for (const p of places){
+        const key = p.id || p.name || `${p.location?.latitude},${p.location?.longitude}`;
+        if (seen.has(key)) continue;
+        seen.add(key); out.push(p);
+      }
+      return out;
+    }
+    function placeKey(p){
+      return p.id || p.name || `${p.location?.latitude},${p.location?.longitude}`;
+    }
 
+    function encodeOverviewPathToPolyline(route){
+      if (route.overview_polyline && typeof route.overview_polyline.getEncodedPath === "function") {
+        return route.overview_polyline.getEncodedPath();
+      }
+      if (route.overview_polyline && route.overview_polyline.points) {
+        return route.overview_polyline.points;
+      }
+      if (route.overview_path && route.overview_path.length) {
+        return google.maps.geometry.encoding.encodePath(route.overview_path);
+      }
+      return "";
+    }
+
+    // WIDER corridor filter (25 km)
+    function filterPlacesAlongRoute(places, encodedPolyline, meters = 25000){
+      if (!encodedPolyline) return places;
+      const path = google.maps.geometry.encoding.decodePath(encodedPolyline);
+      if (!path?.length) return places;
+      const poly = new google.maps.Polyline({ path });
+      const tolDegrees = meters / 111320; // meters per degree
+      return places.filter(p => {
+        const ll = new google.maps.LatLng(p.location.latitude, p.location.longitude);
+        return google.maps.geometry.poly.isLocationOnEdge(ll, poly, tolDegrees) ||
+               google.maps.geometry.poly.isLocationOnPath(ll, poly, tolDegrees);
+      });
+    }
+
+    // ETA fallback via haversine (≈60 mph)
+    function toRad(d){ return d * Math.PI / 180; }
+    function haversineMeters(a, b){
+      const R = 6371000;
+      const dLat = toRad(b.latitude - a.latitude);
+      const dLng = toRad(b.longitude - a.longitude);
+      const lat1 = toRad(a.latitude), lat2 = toRad(b.latitude);
+      const s = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+      return 2 * R * Math.asin(Math.sqrt(s));
+    }
+    function approxEtaSec(originLatLng, destLatLng){
+      const m = haversineMeters(originLatLng, destLatLng);
+      const avgMps = 27; // ~60 mph
+      return Math.max(60, Math.round(m / avgMps));
+    }
+
+    async function computeETAsFromOrigin(originLatLng, destinationsLatLng, API_KEY){
+      const batches = chunk(destinationsLatLng, 90);
+      const all = [];
+      for (const batch of batches){
+        const payload = {
+          origins: [{ waypoint: { location: { latLng: originLatLng } } }],
+          destinations: batch.map(latLng => ({ waypoint: { location: { latLng } } })),
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_AWARE_OPTIMAL",
+          departureTime: { seconds: Math.floor(Date.now()/1000) }
+        };
+        try {
+          const res = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Goog-Api-Key": API_KEY },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok){ all.push(...batch.map(()=>null)); continue; }
+          const text = await res.text();
+          const secs = text.trim().split("\n").map(line => {
+            try {
+              const obj = JSON.parse(line);
+              return obj?.duration?.seconds ?? obj?.duration?.duration?.seconds ?? null;
+            } catch { return null; }
+          });
+          all.push(...secs);
+        } catch {
+          all.push(...batch.map(()=>null));
+        }
+      }
+      return all;
+    }
+
+    // ---------- Renderers ----------
     function renderAttractionCard(item){
       const { place, etaSec } = item;
       const card = document.createElement('div');
@@ -260,29 +335,46 @@
     }
 
     function renderItinerary(){
-      const itEl = document.getElementById('itineraryList');
       itEl.innerHTML = '';
       itCountEl.textContent = `${selectedAttractions.length} selected`;
       selectedAttractions
         .sort((a,b)=>a.etaSec-b.etaSec)
         .forEach((item, i)=>{
           const div = document.createElement('div'); div.className = 'it-item';
-          const name = document.createElement('div'); name.className = 'it-name';
+
+          const info = document.createElement('div');
+          info.style.display = 'grid';
+          info.style.gap = '2px';
+
+          const name = document.createElement('div'); 
+          name.className = 'it-name';
           name.textContent = `${i+1}. ${item.place.displayName?.text || 'Attraction'}`;
+
+          const addr = document.createElement('div');
+          addr.className = 'meta';
+          addr.textContent = item.place.formattedAddress || '';
+
+          const eta = document.createElement('div');
+          eta.className = 'meta';
+          eta.textContent = `~${(item.etaSec/3600).toFixed(1)}h from start`;
+
+          info.append(name, addr, eta);
+
           const btns = document.createElement('div');
           const rm = document.createElement('button'); rm.className='btn icon'; rm.textContent='Remove';
           rm.addEventListener('click', ()=>{
-            selectedAttractions = selectedAttractions.filter(p => p.place.id !== item.place.id);
+            selectedAttractions = selectedAttractions.filter(p => placeKey(p.place) !== placeKey(item.place));
             renderItinerary(); rerouteThroughItinerary();
           });
           btns.appendChild(rm);
-          div.append(name, btns);
+
+          div.append(info, btns);
           itEl.appendChild(div);
         });
     }
 
     async function addToItinerary(place, etaSec){
-      if (selectedAttractions.some(p => p.place.id === place.id)) return;
+      if (selectedAttractions.some(p => placeKey(p.place) === placeKey(place))) return;
       selectedAttractions.push({ place, etaSec });
       renderItinerary();
       await rerouteThroughItinerary();
@@ -324,16 +416,10 @@
       }
     }
 
-    // ---------- Helpers for fetching attractions ----------
-
-    function encodeOverviewPathToPolyline(route){
-      return google.maps.geometry.encoding.encodePath(route.overview_path || []);
-    }
-
-    // Preferred: Places Nearby along route
+    // ---------- Places fetchers ----------
     async function fetchAttractionsViaRoutePolyline(encodedPolyline, API_KEY){
-      const buffers = [4000, 8000, 12000, 20000]; // widen up to 20km
-      // Only include types that are supported by the new Places API
+      // Wider buffers up to 30km so interstates return hits
+      const buffers = [8000, 15000, 25000, 30000];
       const includedTypes = [
         "tourist_attraction","park","museum","zoo","amusement_park","art_gallery","aquarium",
         "natural_feature","campground","rv_park"
@@ -349,7 +435,7 @@
           headers: {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": API_KEY,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.websiteUri,places.rating,places.userRatingCount,places.editorialSummary,places.primaryTypeDisplayName"
+            "X-Goog-FieldMask": "places.id,places.name,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.websiteUri,places.rating,places.userRatingCount,places.editorialSummary,places.primaryTypeDisplayName"
           },
           body: JSON.stringify(payload)
         });
@@ -360,7 +446,6 @@
       return [];
     }
 
-    // Fallback: sample along the route and run Text Search
     function buildSamples(leg){
       const steps = leg.steps || [];
       const samples = [];
@@ -369,13 +454,11 @@
       for (const s of steps){
         const d = s.duration?.value ?? 0;
         accSec += d;
-        // place a sample every ~30 minutes of drive time
         if (accSec >= TARGET_STEP_SEC){
           accSec = 0;
-          samples.push(s.end_location); // a point on the road
+          samples.push(s.end_location);
         }
       }
-      // always push near destination
       samples.push(leg.end_location);
       return samples;
     }
@@ -385,18 +468,18 @@
       const out = [];
       for (const p of points){
         const payload = {
-          textQuery: "tourist attractions OR museum OR park OR viewpoint OR landmark OR zoo OR aquarium OR art gallery OR amusement park",
+          textQuery: "tourist attractions OR museum OR park OR viewpoint OR landmark OR zoo OR aquarium OR art gallery OR amusement park OR historic site OR scenic overlook",
           includedType: "tourist_attraction",
           maxResultCount: 20,
           languageCode: "en",
-          locationBias: { circle: { center: { latitude: p.lat(), longitude: p.lng() }, radius: 20000 } } // 20km
+          locationBias: { circle: { center: { latitude: p.lat(), longitude: p.lng() }, radius: 20000 } }
         };
         const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": API_KEY,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.websiteUri,places.rating,places.userRatingCount,places.editorialSummary,places.primaryTypeDisplayName"
+            "X-Goog-FieldMask": "places.id,places.name,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.websiteUri,places.rating,places.userRatingCount,places.editorialSummary,places.primaryTypeDisplayName"
           },
           body: JSON.stringify(payload)
         });
@@ -407,44 +490,7 @@
       return out;
     }
 
-    function dedupeById(places){
-      const seen = new Set(); const out = [];
-      for (const p of places){
-        if (seen.has(p.id)) continue;
-        seen.add(p.id); out.push(p);
-      }
-      return out;
-    }
-
-    function chunk(arr, n){ const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; }
-
-    async function computeETAsFromOrigin(originLatLng, destinationsLatLng, API_KEY){
-      const batches = chunk(destinationsLatLng, 90);
-      const all = [];
-      for (const batch of batches){
-        const payload = {
-          origins: [{ waypoint: { location: { latLng: originLatLng } } }],
-          destinations: batch.map(latLng => ({ waypoint: { location: { latLng } } })),
-          travelMode: "DRIVE",
-          routingPreference: "TRAFFIC_AWARE_OPTIMAL",
-          departureTime: { seconds: Math.floor(Date.now()/1000) }
-        };
-        const res = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": API_KEY },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok){ all.push(...batch.map(()=>null)); continue; }
-        const text = await res.text();
-        const rows = text.trim().split("\n").map(line => { try { return JSON.parse(line); } catch { return {}; } });
-        const secs = rows.map(r => r?.duration?.duration?.seconds ?? r?.duration?.seconds ?? null);
-        all.push(...secs);
-      }
-      return all;
-    }
-
     // ---------- Main flow ----------
-
     async function initMap(){
       map = new google.maps.Map(document.getElementById("map"), { center: { lat:39.5, lng:-98.35 }, zoom:5, mapTypeControl:false });
       directionsService = new google.maps.DirectionsService();
@@ -463,12 +509,31 @@
     }
     window.initMap = initMap;
 
+    async function attachPlaceAutocomplete({ hostId, visibleInputId, placeholder }) {
+      const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
+      const host = document.getElementById(hostId);
+      const visibleInput = document.getElementById(visibleInputId);
+      // @ts-ignore
+      const pac = new PlaceAutocompleteElement();
+      pac.classList.add('pac-overlay');
+      pac.setAttribute("aria-label", placeholder);
+      try { pac.placeholder = placeholder; } catch(_) {}
+      host.appendChild(pac);
+      pac.addEventListener("input", () => { visibleInput.value = pac.value || pac.valueText || ""; });
+      pac.addEventListener("gmp-select", async ({ placePrediction }) => {
+        const place = placePrediction.toPlace();
+        await place.fetchFields({ fields: ["formattedAddress"] });
+        visibleInput.value = place.formattedAddress || (pac.value || pac.valueText || "");
+      });
+      return pac;
+    }
+
     async function planRouteAndAttractions(){
       const start = document.getElementById('startInput').value.trim();
       const dest  = document.getElementById('destInput').value.trim();
       if (!start || !dest) { alert('Please fill Starting Location and Destination.'); return; }
 
-      statusText.textContent = 'Loading route…';
+      setStatus('Loading route…');
       listEl.innerHTML = '<div class="muted">Finding attractions along your route…</div>';
       itEl.innerHTML = ''; itCountEl.textContent = '0 selected'; selectedAttractions = [];
 
@@ -484,19 +549,24 @@
         baseRenderer.setDirections(resp);
         const route = resp.routes[0];
         const leg   = route.legs[0];
-        renderChips({ start: leg.start_address, dest: leg.end_address });
-        statusText.textContent = 'Route loaded';
+
+        renderChips({ 
+          start: leg.start_address, 
+          dest:  leg.end_address,
+          distText: leg.distance?.text,
+          durText:  leg.duration?.text
+        });
 
         routeOriginLatLng = leg.start_location;
         routeDestLatLng   = leg.end_location;
 
         const API_KEY = new URL(document.querySelector('script[src*="maps.googleapis"]').src).searchParams.get('key');
 
-        // 1) Preferred: along-route corridor
+        // 1) Along-route corridor search (polyline may be missing in some cases)
         const encoded = encodeOverviewPathToPolyline(route);
-        let places = await fetchAttractionsViaRoutePolyline(encoded, API_KEY);
+        let places = encoded ? await fetchAttractionsViaRoutePolyline(encoded, API_KEY) : [];
 
-        // 2) Fallback: sample + text search if corridor is empty
+        // 2) Fallback sampling if corridor returns nothing
         if (!places.length) {
           const sampled = await fetchAttractionsViaSampling(leg, API_KEY);
           places = sampled;
@@ -504,32 +574,47 @@
 
         if (!places.length){
           listEl.innerHTML = '<div class="muted">No attractions found along this route.</div>';
+          setStatus('No attractions found');
           return;
         }
 
-        // Dedupe & sort by ETA from start
+        // Dedupe
         places = dedupeById(places);
-        const originLatLng = { latitude: leg.start_location.lat(), longitude: leg.start_location.lng() };
-        const destLatLngs  = places.map(p => ({ latitude: p.location.latitude, longitude: p.location.longitude }));
-        const etas         = await computeETAsFromOrigin(originLatLng, destLatLngs, API_KEY);
 
-        const entries = places
+        // Filter to true along-route; if the filter kills everything, keep raw list so panel isn't empty
+        let along = encoded ? filterPlacesAlongRoute(places, encoded, 25000) : places;
+        if (!along.length) along = places;
+
+        // Compute ETAs (with fallback to haversine)
+        const originLatLng = { latitude: leg.start_location.lat(), longitude: leg.start_location.lng() };
+        const destLatLngs  = along.map(p => ({ latitude: p.location.latitude, longitude: p.location.longitude }));
+        let etas           = await computeETAsFromOrigin(originLatLng, destLatLngs, API_KEY);
+
+        const nullFrac = etas.filter(e => e == null).length / Math.max(1, etas.length);
+        if (nullFrac > 0.5) {
+          etas = destLatLngs.map(d => approxEtaSec(originLatLng, d));
+        } else {
+          etas = etas.map((e, i) => e ?? approxEtaSec(originLatLng, destLatLngs[i]));
+        }
+
+        const entries = along
           .map((p,i)=>({ place:p, etaSec: etas[i] }))
-          .filter(e=>e.etaSec!=null)
           .sort((a,b)=>a.etaSec-b.etaSec);
 
         const MAX_SHOW = 40;
         listEl.innerHTML = '';
         entries.slice(0, MAX_SHOW).forEach(e=>renderAttractionCard(e));
+        setStatus(`Route loaded • ${entries.length} attractions found`);
       } catch (err) {
         console.error(err);
-        statusText.textContent = 'Directions request failed';
+        setStatus('Directions request failed');
         listEl.innerHTML = '<div class="muted">Could not load route. Please check inputs and API key (Maps, Places, Routes).</div>';
       }
     }
   </script>
 
-  <!-- Google Maps JS API (include geometry for encoding) -->
+  <!-- Google Maps JS API (include geometry for encoding & poly path checks) -->
+  <!-- Replace YOUR_GOOGLE_MAPS_API_KEY below -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCr1WhJtX6cLLu6UCMUVGiKm4mnmuGD6E8&libraries=places,geometry&callback=initMap" async defer></script>
 </body>
 </html>

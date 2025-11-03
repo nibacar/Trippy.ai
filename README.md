@@ -8,7 +8,6 @@ A simple AI-powered road trip planner that builds an itinerary, finds gas stops,
 
 Trippy.ai helps you plan long drives easily. Just enter where you're starting and where you’re headed, and it automatically:
 
-* Adds **gas stops** every ~3 hours (±20–30 min)
 * Finds **attractions** along the route
 * Builds a clean, organized **itinerary**
 
@@ -19,7 +18,6 @@ Everything runs right in your browser with a lightweight backend built using Fas
 ## ✨ Features
 
 * Automatic itinerary generation
-* Smart gas stop placement (~3 hrs apart)
 * Attraction suggestions using built-in data
 * Simple and mobile-friendly interface
 * Fast, clean HTML/CSS/JS frontend
